@@ -7,7 +7,7 @@ const LOGO = 'https://i.imgur.com/CbcU0Qp.png';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,6 +17,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
+    const email = `${username.trim().toLowerCase()}@purplecbd.internal`;
     const { error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -49,16 +50,17 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className={s.form}>
           <div className={s.formGroup}>
-            <label className={s.label} htmlFor="email">Email</label>
+            <label className={s.label} htmlFor="username">Identifiant</label>
             <input
-              id="email"
-              type="email"
+              id="username"
+              type="text"
               className={s.input}
-              placeholder="admin@purplecbd.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+              placeholder="votre_id"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
               required
-              autoComplete="email"
+              autoComplete="username"
+              autoFocus
             />
           </div>
 

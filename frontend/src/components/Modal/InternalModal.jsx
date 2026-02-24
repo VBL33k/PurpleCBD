@@ -1,17 +1,10 @@
-import { useNavigate } from 'react-router-dom';
 import Modal from './Modal';
 import s from './Modal.module.css';
 
 const LOGO = 'https://i.imgur.com/CbcU0Qp.png';
+const DASHBOARD_URL = 'https://purple-cbd-frontend.onrender.com/dashboard/login';
 
 export default function InternalModal({ isOpen, onClose }) {
-  const navigate = useNavigate();
-
-  function handleAccess() {
-    onClose();
-    navigate('/dashboard');
-  }
-
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <img src={LOGO} alt="Purple CBD" className={s.logo} />
@@ -24,9 +17,9 @@ export default function InternalModal({ isOpen, onClose }) {
         Connectez-vous avec vos identifiants pour accéder au tableau de bord.
       </p>
 
-      <button className={s.submit} onClick={handleAccess}>
+      <a href={DASHBOARD_URL} className={s.submit} style={{ textAlign: 'center', textDecoration: 'none' }}>
         Accéder au Dashboard
-      </button>
+      </a>
     </Modal>
   );
 }
