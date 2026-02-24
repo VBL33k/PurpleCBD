@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useScrollProgress } from './hooks/useScrollProgress';
 
-import Cursor from './components/Cursor/Cursor';
 import Navbar from './components/Navbar/Navbar';
 import Hero from './components/Hero/Hero';
 import About from './components/About/About';
@@ -36,9 +35,6 @@ export default function App() {
         style={{ width: `${progress}%` }}
         aria-hidden="true"
       />
-
-      {/* Custom cursor */}
-      <Cursor />
 
       {/* Navigation */}
       <Navbar
