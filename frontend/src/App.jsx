@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import { useScrollProgress } from './hooks/useScrollProgress';
 
 import Navbar from './components/Navbar/Navbar';
@@ -10,11 +11,15 @@ import Footer from './components/Footer/Footer';
 import LoginModal from './components/Modal/LoginModal';
 import InternalModal from './components/Modal/InternalModal';
 
+import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
+import ProtectedRoute from './components/ProtectedRoute';
+
 import s from './App.module.css';
 
-export default function App() {
+function Vitrine() {
   const { progress, scrolled } = useScrollProgress();
-  const [modal, setModal] = useState(null); // 'login' | 'internal' | null
+  const [modal, setModal] = useState(null);
 
   const openLogin    = () => setModal('login');
   const openInternal = () => setModal('internal');
@@ -22,28 +27,24 @@ export default function App() {
 
   return (
     <div className={s.app}>
-      {/* Decorative background orbs */}
       <div className={s.bgOrbs} aria-hidden="true">
         <div className={`${s.orb} ${s.orb1}`} />
         <div className={`${s.orb} ${s.orb2}`} />
         <div className={`${s.orb} ${s.orb3}`} />
       </div>
 
-      {/* Scroll progress bar */}
       <div
         className={s.scrollProgress}
         style={{ width: `${progress}%` }}
         aria-hidden="true"
       />
 
-      {/* Navigation */}
       <Navbar
         scrolled={scrolled}
         onLoginClick={openLogin}
         onInternalClick={openInternal}
       />
 
-      {/* Page sections */}
       <main>
         <Hero />
         <About />
@@ -53,9 +54,25 @@ export default function App() {
 
       <Footer onLoginClick={openLogin} onInternalClick={openInternal} />
 
-      {/* Modals */}
       <LoginModal    isOpen={modal === 'login'}    onClose={closeModal} />
       <InternalModal isOpen={modal === 'internal'} onClose={closeModal} />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Vitrine />} />
+      <Route path="/dashboard/login" element={<LoginPage />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
   );
 }
