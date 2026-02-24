@@ -16,7 +16,7 @@ export default function Hero() {
       <div className={s.inner}>
         <div className={s.eyebrow}>
           <span className={s.eyebrowDot} />
-          Los Santos · Bien-être Botanique · Est. 2025
+          Townsend · Bien-être Botanique · Est. 2025
         </div>
 
         <h1 className={s.title}>
