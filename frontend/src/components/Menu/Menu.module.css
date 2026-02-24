@@ -65,7 +65,7 @@
   position: relative;
   overflow: hidden;
   transition: transform 0.45s var(--ease), border-color 0.35s, box-shadow 0.35s;
-  cursor: none;
+  cursor: pointer;
   transform-style: preserve-3d;
 }
 

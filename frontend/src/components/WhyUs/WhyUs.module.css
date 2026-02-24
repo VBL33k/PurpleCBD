@@ -184,7 +184,7 @@
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 500;
-  cursor: none;
+  cursor: pointer;
   transition: box-shadow 0.25s, transform 0.22s;
 }
 
@@ -205,7 +205,7 @@
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 400;
-  cursor: none;
+  cursor: pointer;
   transition: border-color 0.25s, color 0.25s, background 0.25s;
 }
 

@@ -120,7 +120,7 @@
   font-weight: 500;
   letter-spacing: 0.02em;
   text-decoration: none;
-  cursor: none;
+  cursor: pointer;
   position: relative;
   overflow: hidden;
   transition: box-shadow 0.35s, transform 0.25s;
@@ -164,7 +164,7 @@
   font-size: 14px;
   font-weight: 400;
   text-decoration: none;
-  cursor: none;
+  cursor: pointer;
   transition: border-color 0.25s, color 0.25s, background 0.25s;
 }
 

@@ -3,6 +3,13 @@
   padding: 64px 0 40px;
   position: relative;
   z-index: 1;
+  width: 100%;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 64px;
 }
 
 .inner {
@@ -64,7 +71,7 @@
   font-family: var(--font-body);
   font-size: 13px;
   text-decoration: none;
-  cursor: none;
+  cursor: pointer;
   text-align: left;
   transition: color 0.22s;
   padding: 0;
@@ -121,6 +128,7 @@
 }
 
 @media (max-width: 900px) {
+  .container { padding: 0 24px; }
   .inner { grid-template-columns: 1fr; gap: 36px; }
   .bottom { flex-direction: column; gap: 20px; }
   .credits { text-align: left; }

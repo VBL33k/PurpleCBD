@@ -3,6 +3,10 @@
   top: 0; left: 0; right: 0;
   z-index: 100;
   padding: 18px 0;
+  background: rgba(6, 3, 13, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
   transition: background 0.5s var(--ease),
               padding 0.4s var(--ease);
 }
