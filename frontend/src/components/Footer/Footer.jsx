@@ -5,7 +5,6 @@ const LOGO = 'https://i.imgur.com/CbcU0Qp.png';
 export default function Footer({ onLoginClick, onInternalClick }) {
   return (
     <footer id="contact" className={s.footer}>
-      <div className={s.container}>
         <div className={s.inner}>
           {/* Brand */}
           <div>
@@ -16,7 +15,7 @@ export default function Footer({ onLoginClick, onInternalClick }) {
               "La référence luxe du bien-être urbain — pour ceux qui n'acceptent que le meilleur."
             </p>
             <p className={s.address}>
-              Townsend, San Andreas<br />
+              Townsend, Tennessee<br />
               Contact discret sur réservation
             </p>
           </div>
@@ -55,11 +54,10 @@ export default function Footer({ onLoginClick, onInternalClick }) {
           </div>
           <div className={s.credits}>
             <span className={s.creditsName}>Purple CBD</span><br />
-            <span>© 2025 · Townsend, SA</span><br />
+            <span>© 2025 · Townsend, TN</span><br />
             <span>Norris · Crowel · Sherrod</span>
           </div>
         </div>
-      </div>{/* container */}
     </footer>
   );
 }
