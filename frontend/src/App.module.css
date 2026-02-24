@@ -1,30 +1,48 @@
 /* ============================================================
-   GLOBAL DESIGN SYSTEM — PURPLE CBD
-   CSS variables, reset, base styles
+   DESIGN SYSTEM — PURPLE CBD v2
+   Palette 100% violet, moderne, aucun doré
 ============================================================ */
 
 :global(:root) {
-  --purple-950: #0d0510;
-  --purple-900: #130a1e;
-  --purple-800: #1e0f30;
-  --purple-700: #2e1650;
-  --purple-600: #3d1d6e;
-  --purple-500: #5c2d9e;
-  --purple-400: #7c45c2;
-  --purple-300: #a06ee0;
-  --purple-200: #c4a0f0;
-  --purple-100: #e8d8ff;
-  --gold:        #c9a84c;
-  --gold-light:  #e8c97a;
-  --white:       #f8f4ff;
-  --gray-100:    #e2d9f0;
-  --gray-400:    #8a7fa0;
-  --gray-600:    #4a4060;
-  --anthracite:  #1a1520;
+  /* Violet scale */
+  --v950: #06030d;
+  --v900: #0c0618;
+  --v850: #110820;
+  --v800: #180c2e;
+  --v750: #201040;
+  --v700: #2b1458;
+  --v600: #3e1f80;
+  --v500: #5a2db8;
+  --v450: #6b38d4;
+  --v400: #7d4be8;
+  --v350: #9262f0;
+  --v300: #a878f5;
+  --v250: #bc96f8;
+  --v200: #d0b4fb;
+  --v150: #e3d3fd;
+  --v100: #f1e9ff;
 
-  --font-display: 'Cinzel', serif;
-  --font-body:    'DM Sans', sans-serif;
-  --font-serif:   'Cormorant Garamond', serif;
+  /* Accent — violet électrique vif */
+  --accent: #8b5cf6;
+  --accent-bright: #a78bfa;
+  --accent-dim: #6d28d9;
+
+  /* Neutres */
+  --white: #f5f0ff;
+  --text-primary: #ede8ff;
+  --text-secondary: #9d8fc0;
+  --text-muted: #4d4468;
+  --border: rgba(139, 92, 246, 0.18);
+  --border-bright: rgba(139, 92, 246, 0.45);
+  --glass: rgba(139, 92, 246, 0.06);
+  --glass-hover: rgba(139, 92, 246, 0.10);
+
+  /* Typography */
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'Outfit', sans-serif;
+
+  /* Transitions */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 :global(*),
@@ -40,57 +58,56 @@
 }
 
 :global(body) {
-  background-color: var(--purple-950);
-  color: var(--white);
+  background-color: var(--v950);
+  color: var(--text-primary);
   font-family: var(--font-body);
   font-weight: 300;
   overflow-x: hidden;
   cursor: none;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Noise texture overlay */
+/* Grain overlay */
 :global(body::before) {
   content: '';
   position: fixed;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
-  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.03;
   z-index: 9990;
   pointer-events: none;
 }
 
-/* Container utility */
+/* Container */
 :global(.container) {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 60px;
+  padding: 0 64px;
 }
 
-/* Text selection */
+/* Selection */
 :global(::selection) {
-  background: rgba(124, 69, 194, 0.4);
+  background: rgba(139, 92, 246, 0.35);
   color: var(--white);
 }
 
 /* Scrollbar */
-:global(::-webkit-scrollbar) { width: 4px; }
-:global(::-webkit-scrollbar-track) { background: var(--purple-950); }
-:global(::-webkit-scrollbar-thumb) { background: var(--purple-700); border-radius: 2px; }
-:global(::-webkit-scrollbar-thumb:hover) { background: var(--purple-500); }
+:global(::-webkit-scrollbar) { width: 3px; }
+:global(::-webkit-scrollbar-track) { background: var(--v950); }
+:global(::-webkit-scrollbar-thumb) { background: var(--v600); border-radius: 2px; }
+:global(::-webkit-scrollbar-thumb:hover) { background: var(--v450); }
 
 @media (max-width: 900px) {
-  :global(.container) {
-    padding: 0 24px;
-  }
+  :global(.container) { padding: 0 24px; }
 }
 
-/* ── Layout wrappers ── */
+/* ── App layout ── */
 .app {
   position: relative;
   min-height: 100vh;
 }
 
-/* Background orbs */
+/* Background mesh */
 .bgOrbs {
   position: fixed;
   inset: 0;
@@ -102,48 +119,46 @@
 .orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.18;
+  filter: blur(140px);
 }
 
 .orb1 {
-  width: 600px; height: 600px;
-  background: radial-gradient(circle, var(--purple-500), transparent);
-  top: -200px; left: -100px;
-  animation: orbDrift 20s ease-in-out infinite;
-  animation-delay: 0s;
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(90, 45, 184, 0.22), transparent 70%);
+  top: -250px; left: -150px;
+  animation: drift 25s ease-in-out infinite;
 }
 
 .orb2 {
-  width: 500px; height: 500px;
-  background: radial-gradient(circle, #2a0a5e, transparent);
-  bottom: -100px; right: -100px;
-  animation: orbDrift 20s ease-in-out infinite;
-  animation-delay: -8s;
+  width: 550px; height: 550px;
+  background: radial-gradient(circle, rgba(62, 31, 128, 0.18), transparent 70%);
+  bottom: -150px; right: -100px;
+  animation: drift 25s ease-in-out infinite;
+  animation-delay: -10s;
 }
 
 .orb3 {
-  width: 400px; height: 400px;
-  background: radial-gradient(circle, var(--purple-600), transparent);
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  animation: orbDrift 20s ease-in-out infinite;
-  animation-delay: -14s;
+  width: 450px; height: 450px;
+  background: radial-gradient(circle, rgba(109, 56, 212, 0.12), transparent 70%);
+  top: 45%; left: 55%;
+  animation: drift 25s ease-in-out infinite;
+  animation-delay: -18s;
 }
 
-@keyframes orbDrift {
+@keyframes drift {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  33%       { transform: translate(40px, -30px) scale(1.05); }
-  66%       { transform: translate(-20px, 40px) scale(0.97); }
+  33%       { transform: translate(50px, -40px) scale(1.04); }
+  66%       { transform: translate(-30px, 50px) scale(0.96); }
 }
 
-/* Scroll progress bar */
+/* Scroll progress */
 .scrollProgress {
   position: fixed;
   top: 0; left: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--purple-400), var(--gold));
+  height: 1px;
+  background: linear-gradient(90deg, var(--v500), var(--accent-bright), var(--v300));
   z-index: 9997;
-  transition: width 0.1s linear;
+  transition: width 0.08s linear;
   pointer-events: none;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.6);
 }

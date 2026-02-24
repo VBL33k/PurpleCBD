@@ -2,7 +2,7 @@ import s from './Hero.module.css';
 
 function ArrowIcon() {
   return (
-    <svg className={s.btnPrimaryIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <svg className={s.btnPrimaryIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 12h14M12 5l7 7-7 7" />
     </svg>
   );
@@ -14,22 +14,20 @@ export default function Hero() {
       <div className={s.bgGrid} aria-hidden="true" />
 
       <div className={s.inner}>
-        <div className={s.eyebrow}>Los Santos · Luxe Botanique · Est. 2025</div>
+        <div className={s.eyebrow}>
+          <span className={s.eyebrowDot} />
+          Los Santos · Bien-être Botanique · Est. 2025
+        </div>
 
         <h1 className={s.title}>
-          <span className={s.titlePurple}>Purple</span>
-          <span className={s.titleWhite}>CBD</span>
+          <span className={s.titleLine1}>Purple</span>
+          <span className={s.titleLine2}>CBD</span>
         </h1>
 
         <p className={s.tagline}>
           L'excellence florale pour une{' '}
-          <span className={s.taglineAccent}>clientèle d'élite</span>
-        </p>
-
-        <p className={s.desc}>
-          Purple CBD est la référence luxe du bien-être urbain, alliant innovation botanique et
-          discrétion absolue. Chaque produit est une expérience sensorielle — conçu pour ceux
-          qui refusent de faire des compromis.
+          <span className={s.taglineAccent}>clientèle d'élite</span>.
+          Innovation botanique et discrétion absolue.
         </p>
 
         <div className={s.cta}>

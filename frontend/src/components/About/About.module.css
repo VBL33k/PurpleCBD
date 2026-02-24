@@ -1,5 +1,7 @@
 .section {
   padding: 140px 0;
+  position: relative;
+  z-index: 1;
 }
 
 .grid {
@@ -11,12 +13,10 @@
 
 /* Visual card */
 .card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 4px;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 16px;
   padding: 48px;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   position: relative;
   overflow: hidden;
 }
@@ -25,45 +25,41 @@
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--purple-500), var(--gold), transparent);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--v350), transparent);
 }
 
 .card::after {
   content: '';
   position: absolute;
   bottom: -80px; right: -80px;
-  width: 200px; height: 200px;
-  background: radial-gradient(circle, var(--purple-600), transparent);
-  opacity: 0.3;
-  filter: blur(40px);
+  width: 240px; height: 240px;
+  background: radial-gradient(circle, rgba(62, 31, 128, 0.35), transparent);
+  filter: blur(50px);
   pointer-events: none;
 }
 
 .logo {
   width: 100%;
-  max-width: 200px;
+  max-width: 180px;
   display: block;
-  margin: 0 auto 32px;
-  filter: drop-shadow(0 0 30px rgba(124, 69, 194, 0.5));
+  margin: 0 auto 36px;
+  filter: drop-shadow(0 0 28px rgba(139, 92, 246, 0.45));
 }
 
 .stats {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 12px;
 }
 
-.statItem {
-  text-align: center;
-}
+.statItem { text-align: center; }
 
 .statNumber {
   font-family: var(--font-display);
-  font-size: 34px;
-  font-weight: 600;
-  background: linear-gradient(135deg, var(--purple-300), var(--gold));
+  font-size: 32px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--v200), var(--v350));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -74,105 +70,102 @@
 
 .statLabel {
   font-size: 10px;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--gray-400);
+  color: var(--text-muted);
 }
 
 /* Content */
 .sectionLabel {
   font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 0.4em;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--accent-bright);
   margin-bottom: 20px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .sectionLabel::before {
   content: '';
-  width: 32px;
-  height: 1px;
-  background: var(--gold);
+  width: 24px; height: 1px;
+  background: var(--accent-bright);
   flex-shrink: 0;
 }
 
 .title {
   font-family: var(--font-display);
-  font-size: clamp(36px, 4vw, 52px);
-  font-weight: 600;
+  font-size: clamp(34px, 3.5vw, 50px);
+  font-weight: 700;
   line-height: 1.05;
-  margin-bottom: 28px;
-  letter-spacing: -0.01em;
+  margin-bottom: 24px;
+  letter-spacing: -0.02em;
   color: var(--white);
 }
 
 .introText {
-  font-family: var(--font-serif);
-  font-size: 18px;
+  font-family: var(--font-body);
+  font-size: 17px;
   font-weight: 300;
-  line-height: 1.8;
-  color: var(--gray-100);
-  margin-bottom: 20px;
-  font-style: italic;
+  line-height: 1.75;
+  color: var(--text-secondary);
+  margin-bottom: 18px;
 }
 
 .desc {
   font-size: 14px;
   font-weight: 300;
-  line-height: 1.9;
-  color: var(--gray-400);
-  margin-bottom: 20px;
+  line-height: 1.85;
+  color: var(--text-muted);
+  margin-bottom: 18px;
 }
 
 .divider {
-  width: 60px;
-  height: 1px;
-  background: linear-gradient(90deg, var(--purple-400), transparent);
-  margin: 32px 0;
+  width: 40px; height: 1px;
+  background: var(--border-bright);
+  margin: 28px 0;
+  opacity: 0.5;
 }
 
 /* Founders */
 .founders {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .founderCard {
   display: flex;
   align-items: flex-start;
-  gap: 20px;
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
-  backdrop-filter: blur(12px);
-  transition: border-color 0.3s, background 0.3s;
+  gap: 16px;
+  padding: 18px 20px;
+  background: rgba(139, 92, 246, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border-color 0.25s, background 0.25s;
   cursor: default;
 }
 
 .founderCard:hover {
-  border-color: var(--purple-400);
-  background: rgba(124, 69, 194, 0.06);
+  border-color: var(--border-bright);
+  background: var(--glass-hover);
 }
 
 .avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--purple-600), var(--purple-800));
-  border: 1px solid var(--purple-400);
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--v600), var(--v800));
+  border: 1px solid var(--border-bright);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
   font-size: 13px;
-  color: var(--purple-200);
+  font-weight: 700;
+  color: var(--v200);
   flex-shrink: 0;
 }
 
@@ -181,37 +174,31 @@
   font-size: 14px;
   font-weight: 600;
   color: var(--white);
-  margin-bottom: 4px;
-  letter-spacing: 0.05em;
+  margin-bottom: 3px;
+  letter-spacing: 0.02em;
 }
 
 .founderRole {
   font-size: 10px;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--gold);
-  margin-bottom: 8px;
+  color: var(--accent-bright);
+  margin-bottom: 7px;
 }
 
 .founderBio {
   font-size: 13px;
-  color: var(--gray-400);
+  color: var(--text-muted);
   line-height: 1.6;
 }
 
 /* Reveal */
 .reveal {
   opacity: 0;
-  transform: translateY(32px);
-  transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(28px);
+  transition: opacity 0.85s var(--ease), transform 0.85s var(--ease);
 }
-
-.reveal.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
+.reveal.visible { opacity: 1; transform: translateY(0); }
 .delay1 { transition-delay: 0.1s; }
 .delay2 { transition-delay: 0.2s; }
 .delay3 { transition-delay: 0.3s; }
