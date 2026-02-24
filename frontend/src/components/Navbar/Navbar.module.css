@@ -28,7 +28,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  position: relative;
 }
 
 /* Logo — gauche */
@@ -51,14 +51,15 @@
   transform: scale(1.04);
 }
 
-/* Links — centre */
+/* Links — centre absolu */
 .links {
   display: flex;
   align-items: center;
   gap: 2px;
   list-style: none;
-  flex: 1;
-  justify-content: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .links li a {
