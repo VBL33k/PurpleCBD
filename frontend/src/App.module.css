@@ -55,6 +55,7 @@
 
 :global(html) {
   scroll-behavior: smooth;
+  width: 100%;
 }
 
 :global(body) {
@@ -64,6 +65,11 @@
   font-weight: 300;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  width: 100%;
+}
+
+:global(#root) {
+  width: 100%;
 }
 
 /* Grain overlay */
@@ -104,6 +110,7 @@
 .app {
   position: relative;
   min-height: 100vh;
+  width: 100%;
 }
 
 /* Background mesh */
