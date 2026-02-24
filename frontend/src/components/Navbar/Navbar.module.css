@@ -93,29 +93,6 @@
   align-items: center;
   gap: 7px;
   padding: 8px 16px;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-secondary);
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 400;
-  cursor: pointer;
-  transition: border-color 0.22s, color 0.22s, background 0.22s;
-  white-space: nowrap;
-}
-
-.btnLogin:hover {
-  border-color: var(--border-bright);
-  color: var(--white);
-  background: var(--glass);
-}
-
-.btnInternal {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 16px;
   background: linear-gradient(135deg, var(--v600), var(--v700));
   border: 1px solid rgba(125, 75, 232, 0.5);
   border-radius: 8px;
@@ -128,10 +105,34 @@
   white-space: nowrap;
 }
 
-.btnInternal:hover {
+.btnLogin:hover {
   background: linear-gradient(135deg, var(--v500), var(--v600));
   box-shadow: 0 0 28px rgba(90, 45, 184, 0.5);
   transform: translateY(-1px);
+}
+
+.btnInternal {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.22s, color 0.22s, background 0.22s;
+  white-space: nowrap;
+}
+
+.btnInternal:hover {
+  border-color: var(--border-bright);
+  color: var(--white);
+  background: var(--glass);
 }
 
 .btnIcon {
