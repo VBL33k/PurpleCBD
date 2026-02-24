@@ -53,9 +53,15 @@
   box-sizing: border-box;
 }
 
+:global(html),
+:global(body),
+:global(#root) {
+  width: 100%;
+  max-width: 100%;
+}
+
 :global(html) {
   scroll-behavior: smooth;
-  width: 100%;
 }
 
 :global(body) {
@@ -63,13 +69,7 @@
   color: var(--text-primary);
   font-family: var(--font-body);
   font-weight: 300;
-  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
-  width: 100%;
-}
-
-:global(#root) {
-  width: 100%;
 }
 
 /* Grain overlay */
