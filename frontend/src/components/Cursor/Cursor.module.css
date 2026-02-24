@@ -1,0 +1,47 @@
+.cursor {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  background: var(--purple-300);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.3s;
+  mix-blend-mode: screen;
+}
+
+.cursor.active {
+  width: 18px;
+  height: 18px;
+  background: var(--gold);
+}
+
+.ring {
+  position: fixed;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(160, 110, 224, 0.5);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  transform: translate(-50%, -50%);
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              height 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.3s;
+}
+
+.ring.active {
+  width: 60px;
+  height: 60px;
+  opacity: 0.5;
+}
+
+@media (hover: none) {
+  .cursor,
+  .ring {
+    display: none;
+  }
+}

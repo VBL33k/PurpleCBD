@@ -1,0 +1,196 @@
+.section {
+  padding: 140px 0;
+  background: linear-gradient(180deg, transparent, rgba(30, 15, 48, 0.4), transparent);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 80px;
+}
+
+.sectionLabel {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.sectionLabel::before,
+.sectionLabel::after {
+  content: '';
+  width: 32px;
+  height: 1px;
+  background: var(--gold);
+  flex-shrink: 0;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(42px, 5vw, 72px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  margin-bottom: 20px;
+  color: var(--white);
+}
+
+.subtitle {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-style: italic;
+  color: var(--gray-400);
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+/* Product Card */
+.card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 4px;
+  padding: 48px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.4s,
+              box-shadow 0.4s;
+  cursor: none;
+  transform-style: preserve-3d;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cardAccent, #a06ee0), transparent);
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  bottom: -60px; right: -60px;
+  width: 180px; height: 180px;
+  background: radial-gradient(circle, var(--cardGlow, #5c2d9e), transparent);
+  opacity: 0;
+  filter: blur(40px);
+  transition: opacity 0.5s;
+  pointer-events: none;
+}
+
+.card:hover {
+  transform: translateY(-8px);
+}
+
+.card:hover::after {
+  opacity: 0.5;
+}
+
+/* Card themes via inline CSS variables */
+.cardPurple { --cardAccent: #a06ee0; --cardGlow: #5c2d9e; }
+.cardEarth  { --cardAccent: #8b6914; --cardGlow: #5a3d00; }
+.cardLemon  { --cardAccent: #c8b800; --cardGlow: #5a5000; }
+.cardDark   { --cardAccent: #7c45c2; --cardGlow: #1a0a30; }
+
+.badge {
+  position: absolute;
+  top: 24px; right: 24px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.2), rgba(201, 168, 76, 0.05));
+  border: 1px solid rgba(201, 168, 76, 0.4);
+  border-radius: 2px;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+
+.number {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--cardAccent, var(--purple-300));
+  margin-bottom: 24px;
+  display: block;
+}
+
+.icon {
+  font-size: 36px;
+  margin-bottom: 20px;
+  display: block;
+}
+
+.name {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  letter-spacing: 0.02em;
+  color: var(--white);
+}
+
+.strain {
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--cardAccent, var(--purple-300));
+  margin-bottom: 24px;
+}
+
+.desc {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--gray-100);
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+}
+
+/* Reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.delay1 { transition-delay: 0.1s; }
+.delay2 { transition-delay: 0.2s; }
+.delay3 { transition-delay: 0.3s; }
+
+@media (max-width: 900px) {
+  .section { padding: 80px 0; }
+  .grid { grid-template-columns: 1fr; }
+}

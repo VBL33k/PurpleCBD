@@ -1,0 +1,121 @@
+.footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 60px 0 40px;
+  position: relative;
+  z-index: 1;
+}
+
+.inner {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 60px;
+  margin-bottom: 48px;
+}
+
+.logoRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.logoImg {
+  height: 36px;
+  filter: drop-shadow(0 0 8px rgba(124, 69, 194, 0.4));
+}
+
+.tagline {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-style: italic;
+  color: var(--gray-400);
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+
+.address {
+  font-size: 12px;
+  color: var(--gray-600);
+  line-height: 1.7;
+}
+
+.colTitle {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+  margin-bottom: 20px;
+}
+
+.links {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.links button,
+.links a {
+  color: var(--gray-600);
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 13px;
+  text-decoration: none;
+  cursor: none;
+  text-align: left;
+  transition: color 0.3s;
+  padding: 0;
+}
+
+.links button:hover,
+.links a:hover {
+  color: var(--purple-200);
+}
+
+.bottom {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-top: 32px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 40px;
+}
+
+.legalTitle {
+  color: var(--gray-400);
+  display: block;
+  margin-bottom: 6px;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.legal {
+  font-size: 11px;
+  color: var(--gray-600);
+  line-height: 1.6;
+  max-width: 560px;
+}
+
+.credits {
+  font-size: 11px;
+  color: var(--gray-600);
+  text-align: right;
+  flex-shrink: 0;
+  line-height: 1.8;
+}
+
+.creditsName {
+  color: var(--purple-300);
+  font-weight: 500;
+}
+
+@media (max-width: 900px) {
+  .inner { grid-template-columns: 1fr; gap: 36px; }
+  .bottom { flex-direction: column; gap: 20px; }
+  .credits { text-align: left; }
+}

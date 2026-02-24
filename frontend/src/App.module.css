@@ -1,0 +1,149 @@
+/* ============================================================
+   GLOBAL DESIGN SYSTEM — PURPLE CBD
+   CSS variables, reset, base styles
+============================================================ */
+
+:global(:root) {
+  --purple-950: #0d0510;
+  --purple-900: #130a1e;
+  --purple-800: #1e0f30;
+  --purple-700: #2e1650;
+  --purple-600: #3d1d6e;
+  --purple-500: #5c2d9e;
+  --purple-400: #7c45c2;
+  --purple-300: #a06ee0;
+  --purple-200: #c4a0f0;
+  --purple-100: #e8d8ff;
+  --gold:        #c9a84c;
+  --gold-light:  #e8c97a;
+  --white:       #f8f4ff;
+  --gray-100:    #e2d9f0;
+  --gray-400:    #8a7fa0;
+  --gray-600:    #4a4060;
+  --anthracite:  #1a1520;
+
+  --font-display: 'Cinzel', serif;
+  --font-body:    'DM Sans', sans-serif;
+  --font-serif:   'Cormorant Garamond', serif;
+}
+
+:global(*),
+:global(*::before),
+:global(*::after) {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:global(html) {
+  scroll-behavior: smooth;
+}
+
+:global(body) {
+  background-color: var(--purple-950);
+  color: var(--white);
+  font-family: var(--font-body);
+  font-weight: 300;
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* Noise texture overlay */
+:global(body::before) {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.025;
+  z-index: 9990;
+  pointer-events: none;
+}
+
+/* Container utility */
+:global(.container) {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 60px;
+}
+
+/* Text selection */
+:global(::selection) {
+  background: rgba(124, 69, 194, 0.4);
+  color: var(--white);
+}
+
+/* Scrollbar */
+:global(::-webkit-scrollbar) { width: 4px; }
+:global(::-webkit-scrollbar-track) { background: var(--purple-950); }
+:global(::-webkit-scrollbar-thumb) { background: var(--purple-700); border-radius: 2px; }
+:global(::-webkit-scrollbar-thumb:hover) { background: var(--purple-500); }
+
+@media (max-width: 900px) {
+  :global(.container) {
+    padding: 0 24px;
+  }
+}
+
+/* ── Layout wrappers ── */
+.app {
+  position: relative;
+  min-height: 100vh;
+}
+
+/* Background orbs */
+.bgOrbs {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.18;
+}
+
+.orb1 {
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, var(--purple-500), transparent);
+  top: -200px; left: -100px;
+  animation: orbDrift 20s ease-in-out infinite;
+  animation-delay: 0s;
+}
+
+.orb2 {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, #2a0a5e, transparent);
+  bottom: -100px; right: -100px;
+  animation: orbDrift 20s ease-in-out infinite;
+  animation-delay: -8s;
+}
+
+.orb3 {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, var(--purple-600), transparent);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  animation: orbDrift 20s ease-in-out infinite;
+  animation-delay: -14s;
+}
+
+@keyframes orbDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(40px, -30px) scale(1.05); }
+  66%       { transform: translate(-20px, 40px) scale(0.97); }
+}
+
+/* Scroll progress bar */
+.scrollProgress {
+  position: fixed;
+  top: 0; left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--purple-400), var(--gold));
+  z-index: 9997;
+  transition: width 0.1s linear;
+  pointer-events: none;
+}
