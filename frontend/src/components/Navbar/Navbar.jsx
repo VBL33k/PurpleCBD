@@ -42,10 +42,10 @@ export default function Navbar({ scrolled, onLoginClick, onInternalClick }) {
             <UserIcon />
             <span>Connexion</span>
           </button>
-          <button className={s.btnInternal} onClick={onInternalClick}>
+          <a href="https://purple-cbd-frontend.onrender.com/dashboard/login" className={s.btnInternal}>
             <DashboardIcon />
             <span>Espace Interne</span>
-          </button>
+          </a>
         </div>
       </div>
     </nav>
