@@ -1,7 +1,7 @@
 const { Client, GatewayIntentBits, Events, EmbedBuilder } = require('discord.js');
 const http = require('http');
 
-const CHANNEL_ID = '1145351530225074239';
+const CHANNEL_ID = '1476199936508039304';
 
 const client = new Client({
   intents: [

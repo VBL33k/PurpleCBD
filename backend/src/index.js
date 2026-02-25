@@ -60,14 +60,14 @@ app.get('/api/products', (_req, res) => {
 
 // ── Notification nouveau client Discord ──
 app.post('/api/notify/new-user', async (req, res) => {
-  const { username, discordId, avatarUrl } = req.body;
+  const { username, discordId, avatarUrl, rpName } = req.body;
   if (!discordId) return res.status(400).json({ error: 'discordId requis.' });
 
   try {
     const botRes = await fetch(`${process.env.BOT_URL}/notify/new-user`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, discordId, avatarUrl }),
+      body: JSON.stringify({ username, discordId, avatarUrl, rpName }),
     });
     const data = await botRes.json();
     res.json(data);
