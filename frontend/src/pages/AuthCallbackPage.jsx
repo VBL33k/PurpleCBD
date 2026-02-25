@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { storeUser } from '../lib/discordAuth';
+import { storeUser, getStoredUser } from '../lib/discordAuth';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://purplecbd.onrender.com';
 
@@ -26,6 +26,11 @@ export default function AuthCallbackPage() {
       .then(res => res.json())
       .then(user => {
         if (user.discordId) {
+          // Préserve le rpName si c'est le même utilisateur
+          const existing = getStoredUser();
+          if (existing?.discordId === user.discordId && existing?.rpName) {
+            user.rpName = existing.rpName;
+          }
           storeUser(user);
           navigate('/client', { replace: true });
         } else {
