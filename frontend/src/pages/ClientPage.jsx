@@ -269,7 +269,7 @@ export default function ClientPage() {
     return (
       <div className={s.banScreen}>
         <img src={LOGO} alt="Purple CBD" className={s.banLogo} />
-        <div className={s.banIcon}>🚫</div>
+
         <h1 className={s.banTitle}>Compte suspendu</h1>
         <p className={s.banMessage}>{banData.message || "Votre compte a été banni. Contactez l'administration."}</p>
         <button className={s.banLogoutBtn} onClick={handleLogout}>Se déconnecter</button>
