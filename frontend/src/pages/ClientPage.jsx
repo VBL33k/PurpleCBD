@@ -1,8 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getStoredUser, clearUser, updateStoredUser } from '../lib/discordAuth';
+import { supabase } from '../lib/supabase';
 import ChatModal from '../components/Modal/ChatModal';
 import s from './ClientPage.module.css';
+
+const SEEN_KEY = 'chat_seen_client';
+function getSeenMap() {
+  try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '{}'); } catch { return {}; }
+}
+function updateSeen(orderId) {
+  const map = getSeenMap();
+  map[orderId] = Date.now();
+  localStorage.setItem(SEEN_KEY, JSON.stringify(map));
+}
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://purplecbd.onrender.com';
 const LOGO = 'https://i.imgur.com/CbcU0Qp.png';
@@ -64,6 +75,8 @@ export default function ClientPage() {
   const [myOrders, setMyOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [chatOrder, setChatOrder] = useState(null); // { id } for chat modal
+  const [unreadCounts, setUnreadCounts] = useState({}); // { orderId: count }
+  const chatOrderRef = useRef(null);
 
   /* RP Popup */
   const [showRpPopup, setShowRpPopup] = useState(false);
@@ -119,13 +132,76 @@ export default function ClientPage() {
   );
 
   /* Load my orders */
+  /* Fetch unread counts (vendor messages unseen by client) */
+  async function fetchUnreadCounts(orders) {
+    if (!orders.length) return;
+    const seenMap = getSeenMap();
+    const orderIds = orders.map(o => o.id);
+    const { data } = await supabase
+      .from('chat_messages')
+      .select('order_id, created_at')
+      .neq('sender', 'client')
+      .in('order_id', orderIds);
+    if (!data) return;
+    const counts = {};
+    for (const msg of data) {
+      const seenAt = seenMap[msg.order_id] || 0;
+      if (new Date(msg.created_at).getTime() > seenAt) {
+        counts[msg.order_id] = (counts[msg.order_id] || 0) + 1;
+      }
+    }
+    setUnreadCounts(counts);
+  }
+
+  /* Subscribe to realtime new messages */
+  useEffect(() => {
+    const channel = supabase
+      .channel('client_chat_watch')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages',
+      }, payload => {
+        const msg = payload.new;
+        if (msg.sender === 'client') return; // own message
+        const openId = chatOrderRef.current?.id;
+        if (openId === msg.order_id) return; // already viewing this chat
+        setUnreadCounts(prev => ({
+          ...prev,
+          [msg.order_id]: (prev[msg.order_id] || 0) + 1,
+        }));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  /* Open chat & mark as read */
+  function openChat(orderId) {
+    chatOrderRef.current = { id: orderId };
+    setChatOrder({ id: orderId });
+    updateSeen(orderId);
+    setUnreadCounts(prev => {
+      const next = { ...prev };
+      delete next[orderId];
+      return next;
+    });
+  }
+
+  /* Close chat */
+  function closeChat() {
+    chatOrderRef.current = null;
+    setChatOrder(null);
+  }
+
   async function loadMyOrders() {
     if (!user) return;
     setOrdersLoading(true);
     try {
       const res = await fetch(`${BACKEND_URL}/api/orders/me?discord_id=${user.discordId}`);
       const json = await res.json();
-      setMyOrders(json.orders || []);
+      const orders = json.orders || [];
+      setMyOrders(orders);
+      fetchUnreadCounts(orders);
     } catch (e) { console.error(e); }
     finally { setOrdersLoading(false); }
   }
@@ -201,7 +277,7 @@ export default function ClientPage() {
           orderRef={chatOrder.id}
           senderType="client"
           senderName={displayName}
-          onClose={() => setChatOrder(null)}
+          onClose={closeChat}
         />
       )}
 
@@ -370,8 +446,17 @@ export default function ClientPage() {
                           </span>
                           <div className={s.orderFooterRight}>
                             <span className={s.orderTotal}>${order.total}</span>
-                            <button className={s.orderChatBtn} onClick={() => setChatOrder({ id: order.id })}>
+                            <button
+                              className={`${s.orderChatBtn} ${unreadCounts[order.id] ? s.orderChatBtnUnread : ''}`}
+                              onClick={() => openChat(order.id)}
+                            >
+                              {unreadCounts[order.id] ? <span className={s.chatUnreadDot} /> : null}
                               <ChatIcon /> Chat
+                              {unreadCounts[order.id] > 0 && (
+                                <span style={{ fontSize: '10px', fontWeight: 700, marginLeft: 2 }}>
+                                  {unreadCounts[order.id]}
+                                </span>
+                              )}
                             </button>
                           </div>
                         </div>
