@@ -1,17 +1,11 @@
 import Modal from './Modal';
 import s from './Modal.module.css';
-import { supabase } from '../../lib/supabase';
+import { getDiscordLoginUrl } from '../../lib/discordAuth';
 
 const LOGO = 'https://i.imgur.com/CbcU0Qp.png';
 
-async function handleDiscordLogin() {
-  await supabase.auth.signInWithOAuth({
-    provider: 'discord',
-    options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
-      scopes: 'identify',
-    },
-  });
+function handleDiscordLogin() {
+  window.location.href = getDiscordLoginUrl();
 }
 
 export default function LoginModal({ isOpen, onClose }) {

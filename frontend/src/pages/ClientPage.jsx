@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { getStoredUser, clearUser, updateStoredUser } from '../lib/discordAuth';
 import s from './ClientPage.module.css';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://purplecbd.onrender.com';
@@ -15,12 +15,10 @@ export default function ClientPage() {
   const [rpError, setRpError] = useState('');
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { navigate('/'); return; }
-      setUser(user);
-      const hasRpName = user.user_metadata?.rp_name;
-      if (!hasRpName) setShowRpPopup(true);
-    });
+    const stored = getStoredUser();
+    if (!stored) { navigate('/'); return; }
+    setUser(stored);
+    if (!stored.rpName) setShowRpPopup(true);
   }, [navigate]);
 
   async function handleRpSubmit(e) {
@@ -29,51 +27,39 @@ export default function ClientPage() {
     setRpLoading(true);
     setRpError('');
 
-    const { error } = await supabase.auth.updateUser({
-      data: { rp_name: rpName.trim() },
-    });
-
-    if (error) {
-      setRpError('Erreur, réessaie.');
-      setRpLoading(false);
-      return;
-    }
+    const trimmed = rpName.trim();
+    updateStoredUser({ rpName: trimmed });
 
     // Notifier le bot
-    const meta = user.user_metadata;
     try {
       await fetch(`${BACKEND_URL}/api/notify/new-user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: meta.full_name || meta.name || meta.user_name || 'Inconnu',
-          discordId: meta.provider_id || user.id,
-          avatarUrl: meta.avatar_url || null,
-          rpName: rpName.trim(),
+          username: user.username || 'Inconnu',
+          discordId: user.discordId,
+          avatarUrl: user.avatarUrl || null,
+          rpName: trimmed,
         }),
       });
     } catch (e) {
       console.error('Notification échouée:', e);
     }
 
+    setUser(getStoredUser());
     setShowRpPopup(false);
     setRpLoading(false);
-
-    // Refresh user
-    const { data: { user: updated } } = await supabase.auth.getUser();
-    setUser(updated);
   }
 
-  async function handleLogout() {
-    await supabase.auth.signOut();
+  function handleLogout() {
+    clearUser();
     navigate('/');
   }
 
   if (!user) return null;
 
-  const meta = user.user_metadata;
-  const displayName = meta?.rp_name || meta?.full_name || meta?.name || 'Client';
-  const avatar = meta?.avatar_url;
+  const displayName = user.rpName || user.username || 'Client';
+  const avatar = user.avatarUrl;
 
   return (
     <div className={s.page}>
