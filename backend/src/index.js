@@ -36,15 +36,20 @@ app.get('/api/health', (_req, res) => {
 
 // ── Discord notify ──
 const DISCORD_CHANNEL_ID = '1476199936508039304';
+const DISCORD_COLOR_PURPLE = 0x7C3AED;
+const DISCORD_COLOR_GREEN  = 0x22C55E;
+const DISCORD_COLOR_RED    = 0xEF4444;
+const DISCORD_COLOR_ORANGE = 0xF97316;
+const DISCORD_FOOTER       = { text: 'Purple CBD — Espace Client' };
 
-async function sendDiscordMessage(content) {
+async function sendDiscordEmbed(embed) {
   const token = process.env.DISCORD_BOT_TOKEN;
-  if (!token) { console.log('[Discord notify skipped — no DISCORD_BOT_TOKEN]', content.slice(0, 80)); return; }
+  if (!token) { console.log('[Discord notify skipped — no DISCORD_BOT_TOKEN]'); return; }
   try {
     const res = await fetch(`https://discord.com/api/v10/channels/${DISCORD_CHANNEL_ID}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bot ${token}` },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ embeds: [{ ...embed, footer: DISCORD_FOOTER, timestamp: new Date().toISOString() }] }),
     });
     if (!res.ok) console.error('Discord API error:', await res.text());
   } catch (err) { console.error('Discord send error:', err); }
@@ -137,16 +142,22 @@ app.put('/api/settings', async (req, res) => {
 
   // Discord notifications for settings changes
   if (store_open !== undefined) {
-    sendDiscordMessage(store_open
-      ? '🟢 La boutique est maintenant **ouverte**.'
-      : '🔴 La boutique est maintenant **fermée**.'
-    ).catch(() => {});
+    sendDiscordEmbed({
+      title: store_open ? '🟢 Boutique ouverte' : '🔴 Boutique fermée',
+      color: store_open ? DISCORD_COLOR_GREEN : DISCORD_COLOR_RED,
+      description: store_open
+        ? 'La boutique est maintenant **ouverte**. Les clients peuvent passer commande.'
+        : 'La boutique est maintenant **fermée**. Les commandes sont suspendues.',
+    }).catch(() => {});
   }
   if (delivery_enabled !== undefined) {
-    sendDiscordMessage(delivery_enabled
-      ? '🚗 La livraison à domicile est maintenant **activée**.'
-      : '🚫 La livraison à domicile est maintenant **désactivée**.'
-    ).catch(() => {});
+    sendDiscordEmbed({
+      title: delivery_enabled ? '🚗 Livraison activée' : '🚫 Livraison désactivée',
+      color: delivery_enabled ? DISCORD_COLOR_GREEN : DISCORD_COLOR_ORANGE,
+      description: delivery_enabled
+        ? 'La livraison à domicile est maintenant **activée**.'
+        : 'La livraison à domicile est maintenant **désactivée**. Retrait en magasin uniquement.',
+    }).catch(() => {});
   }
 
   res.json({ ok: true });
@@ -175,17 +186,28 @@ app.post('/api/orders', async (req, res) => {
 
   if (error) { console.error('Order insert error:', error); return res.status(500).json({ error: 'Erreur création commande.' }); }
 
-  // Discord notification
-  const itemsStr = items.map(i => `${i.name} ×${i.qty}`).join(', ');
-  const deliveryStr = (deliveryType === 'delivery') ? '🚗 Livraison' : '🏪 Retrait en magasin';
-  const addrStr = address ? `\n📍 ${address}` : '';
-  const notesStr = notes ? `\n📝 ${notes}` : '';
-  sendDiscordMessage(
-    `🛒 **Nouvelle commande** | #${data.id.slice(-6).toUpperCase()}\n` +
-    `👤 **${rpName || username || 'Client'}**\n` +
-    `📦 ${itemsStr}\n` +
-    `💰 **$${total}** — ${deliveryStr}${addrStr}${notesStr}`
-  ).catch(() => {});
+  // Discord notification — embed
+  const ref       = data.id.slice(-6).toUpperCase();
+  const itemsStr  = items.map(i => `**${i.name}** ×${i.qty}`).join('\n');
+  const modeStr   = (deliveryType === 'delivery') ? '🚗 Livraison à domicile' : '🏪 Retrait en magasin';
+  const embedFields = [
+    { name: 'Réf. commande', value: `\`#${ref}\``,                   inline: true  },
+    { name: 'Total',         value: `**$${total}**`,                  inline: true  },
+    { name: 'Mode',          value: modeStr,                          inline: true  },
+    { name: 'Client',        value: rpName  || username || 'Inconnu', inline: true  },
+    { name: 'Pseudo Discord',value: username || 'Inconnu',            inline: true  },
+    { name: 'ID Discord',    value: `\`${discordId}\``,               inline: true  },
+    { name: 'Articles',      value: itemsStr,                         inline: false },
+  ];
+  if (address) embedFields.push({ name: '📍 Adresse', value: address, inline: false });
+  if (notes)   embedFields.push({ name: '📝 Notes',   value: notes,   inline: false });
+
+  sendDiscordEmbed({
+    title: '🛒 Nouvelle commande',
+    color: DISCORD_COLOR_PURPLE,
+    thumbnail: avatarUrl ? { url: avatarUrl } : undefined,
+    fields: embedFields,
+  }).catch(() => {});
 
   res.json({ ok: true, orderId: data.id });
 });
