@@ -143,15 +143,26 @@ app.post('/api/members/register', async (req, res) => {
 app.get('/api/members/check', async (req, res) => {
   const { discord_id } = req.query;
   if (!discord_id) return res.status(400).json({ error: 'discord_id requis.' });
-  const { data } = await supabase
-    .from('members')
-    .select('banned, ban_message, rp_name, loyalty_points')
-    .eq('discord_id', discord_id)
-    .maybeSingle();
+
+  const [memberResult, ordersResult] = await Promise.all([
+    supabase.from('members').select('banned, ban_message, rp_name, loyalty_points').eq('discord_id', discord_id).maybeSingle(),
+    supabase.from('orders').select('order_type, points_earned, points_cost, status').eq('discord_id', discord_id),
+  ]);
+  const data   = memberResult.data;
+  const orders = ordersResult.data || [];
+
   if (data?.banned) {
     return res.json({ banned: true, message: data.ban_message || 'Votre compte a été banni.' });
   }
-  res.json({ banned: false, rpName: data?.rp_name || null, loyaltyPoints: data?.loyalty_points ?? 0 });
+
+  const pendingPoints = orders
+    .filter(o => o.order_type === 'regular' && !['delivered', 'picked_up', 'cancelled'].includes(o.status))
+    .reduce((sum, o) => sum + (o.points_earned || 0), 0);
+  const totalSpent = orders
+    .filter(o => o.order_type === 'loyalty')
+    .reduce((sum, o) => sum + (o.points_cost || 0), 0);
+
+  res.json({ banned: false, rpName: data?.rp_name || null, loyaltyPoints: data?.loyalty_points ?? 0, pendingPoints, totalSpent });
 });
 
 app.get('/api/members', async (req, res) => {
@@ -260,6 +271,8 @@ app.post('/api/orders', async (req, res) => {
   if (!discordId || !items?.length) return res.status(400).json({ error: 'discordId et items requis.' });
   if (deliveryType === 'delivery' && !address?.trim()) return res.status(400).json({ error: 'Adresse requise pour la livraison.' });
 
+  const pointsEarned = total; // 1 pt par dollar
+
   const { data, error } = await supabase.from('orders').insert({
     discord_id: discordId,
     username,
@@ -271,6 +284,9 @@ app.post('/api/orders', async (req, res) => {
     address: address || null,
     notes: notes || null,
     status: 'pending',
+    order_type: 'regular',
+    points_earned: pointsEarned,
+    points_cost: 0,
   }).select('id').single();
 
   if (error) { console.error('Order insert error:', error); return res.status(500).json({ error: 'Erreur création commande.' }); }
@@ -287,6 +303,7 @@ app.post('/api/orders', async (req, res) => {
     { name: 'Pseudo Discord',value: username || 'Inconnu',            inline: true  },
     { name: 'ID Discord',    value: `\`${discordId}\``,               inline: true  },
     { name: 'Articles',      value: itemsStr,                         inline: false },
+    { name: '⭐ Points à gagner', value: `**${pointsEarned} pts** (crédités à la remise)`, inline: false },
   ];
   if (address) embedFields.push({ name: '📍 Adresse', value: address, inline: false });
   if (notes)   embedFields.push({ name: '📝 Notes',   value: notes,   inline: false });
@@ -299,6 +316,69 @@ app.post('/api/orders', async (req, res) => {
   }).catch(() => {});
 
   res.json({ ok: true, orderId: data.id });
+});
+
+// Créer une commande fidélité (client)
+app.post('/api/orders/loyalty', async (req, res) => {
+  const { discordId, username, rpName, avatarUrl, items, deliveryType, address, notes } = req.body;
+  if (!discordId || !items?.length) return res.status(400).json({ error: 'discordId et items requis.' });
+  if (deliveryType === 'delivery' && !address?.trim()) return res.status(400).json({ error: 'Adresse requise pour la livraison.' });
+
+  const pointsCost = items.reduce((sum, i) => sum + (i.qty * 100), 0);
+
+  // Vérifier le solde
+  const { data: member } = await supabase.from('members').select('loyalty_points').eq('discord_id', discordId).maybeSingle();
+  if (!member || (member.loyalty_points ?? 0) < pointsCost) {
+    return res.status(400).json({ error: 'Solde de points insuffisant.', needed: pointsCost, current: member?.loyalty_points ?? 0 });
+  }
+
+  const { data, error } = await supabase.from('orders').insert({
+    discord_id: discordId,
+    username,
+    rp_name: rpName,
+    avatar_url: avatarUrl,
+    items,
+    total: 0,
+    delivery_type: deliveryType || 'pickup',
+    address: address || null,
+    notes: notes || null,
+    status: 'pending',
+    order_type: 'loyalty',
+    points_cost: pointsCost,
+    points_earned: 0,
+  }).select('id').single();
+
+  if (error) { console.error('Loyalty order error:', error); return res.status(500).json({ error: 'Erreur création commande.' }); }
+
+  // Déduire les points
+  await supabase.from('members')
+    .update({ loyalty_points: member.loyalty_points - pointsCost, updated_at: new Date().toISOString() })
+    .eq('discord_id', discordId);
+
+  // Discord notification — embed fidélité
+  const ref      = data.id.slice(-6).toUpperCase();
+  const itemsStr = items.map(i => `**${i.name}** ×${i.qty}`).join('\n');
+  const modeStr  = deliveryType === 'delivery' ? '🚗 Livraison à domicile' : '🏪 Retrait en magasin';
+  const loyaltyFields = [
+    { name: 'Réf. commande',   value: `\`#${ref}\``,                   inline: true  },
+    { name: 'Points déduits',  value: `**${pointsCost} pts**`,          inline: true  },
+    { name: 'Mode',            value: modeStr,                          inline: true  },
+    { name: 'Client',          value: rpName || username || 'Inconnu',  inline: true  },
+    { name: 'Pseudo Discord',  value: username || 'Inconnu',            inline: true  },
+    { name: 'ID Discord',      value: `\`${discordId}\``,               inline: true  },
+    { name: 'Articles',        value: itemsStr,                         inline: false },
+  ];
+  if (address) loyaltyFields.push({ name: '📍 Adresse', value: address, inline: false });
+  if (notes)   loyaltyFields.push({ name: '📝 Notes',   value: notes,   inline: false });
+
+  sendDiscordEmbed({
+    title: '⭐ Commande fidélité',
+    color: DISCORD_COLOR_ORANGE,
+    thumbnail: avatarUrl ? { url: avatarUrl } : undefined,
+    fields: loyaltyFields,
+  }).catch(() => {});
+
+  res.json({ ok: true, orderId: data.id, pointsCost });
 });
 
 // Liste toutes les commandes (admin)
@@ -333,10 +413,50 @@ app.patch('/api/orders/:id/status', async (req, res) => {
   const user = await requireAdmin(req, res);
   if (!user) return;
   const { status } = req.body;
-  const validStatuses = ['pending', 'confirmed', 'ready', 'delivered', 'cancelled'];
+  const validStatuses = ['pending', 'ready', 'delivered', 'picked_up', 'cancelled'];
   if (!validStatuses.includes(status)) return res.status(400).json({ error: 'Statut invalide.' });
+
+  // Récupérer la commande pour gestion des points
+  const { data: order } = await supabase
+    .from('orders')
+    .select('discord_id, order_type, points_earned, points_cost, status')
+    .eq('id', req.params.id)
+    .maybeSingle();
+
   const { error } = await supabase.from('orders').update({ status, updated_at: new Date().toISOString() }).eq('id', req.params.id);
   if (error) return res.status(500).json({ error: 'Erreur mise à jour statut.' });
+
+  if (order) {
+    const completedStatuses = ['delivered', 'picked_up'];
+    const wasCompleted = completedStatuses.includes(order.status);
+
+    // Commande régulière livrée/retirée → créditer les points
+    if (order.order_type === 'regular' && completedStatuses.includes(status) && !wasCompleted) {
+      const pts = order.points_earned || 0;
+      if (pts > 0) {
+        const { data: member } = await supabase.from('members').select('loyalty_points').eq('discord_id', order.discord_id).maybeSingle();
+        if (member) {
+          await supabase.from('members')
+            .update({ loyalty_points: (member.loyalty_points ?? 0) + pts, updated_at: new Date().toISOString() })
+            .eq('discord_id', order.discord_id);
+        }
+      }
+    }
+
+    // Commande fidélité annulée → rembourser les points
+    if (order.order_type === 'loyalty' && status === 'cancelled' && order.status !== 'cancelled') {
+      const pts = order.points_cost || 0;
+      if (pts > 0) {
+        const { data: member } = await supabase.from('members').select('loyalty_points').eq('discord_id', order.discord_id).maybeSingle();
+        if (member) {
+          await supabase.from('members')
+            .update({ loyalty_points: (member.loyalty_points ?? 0) + pts, updated_at: new Date().toISOString() })
+            .eq('discord_id', order.discord_id);
+        }
+      }
+    }
+  }
+
   res.json({ ok: true });
 });
 

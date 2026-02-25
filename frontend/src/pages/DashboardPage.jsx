@@ -18,11 +18,11 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://purple-cbd-api.
 const LOGO = 'https://i.imgur.com/CbcU0Qp.png';
 
 const STATUS_OPTIONS = [
-  { value: 'pending',   label: 'En attente',  color: '#f59e0b' },
-  { value: 'confirmed', label: 'Confirmée',   color: '#8b5cf6' },
-  { value: 'ready',     label: 'Prête',       color: '#06b6d4' },
-  { value: 'delivered', label: 'Livrée',      color: '#10b981' },
-  { value: 'cancelled', label: 'Annulée',     color: '#ef4444' },
+  { value: 'pending',   label: 'En attente', color: '#f59e0b' },
+  { value: 'ready',     label: 'Prête',      color: '#06b6d4' },
+  { value: 'delivered', label: 'Livrée',     color: '#10b981' },
+  { value: 'picked_up', label: 'Retirée',    color: '#8b5cf6' },
+  { value: 'cancelled', label: 'Annulée',    color: '#ef4444' },
 ];
 
 /* ── Icons ── */
@@ -683,7 +683,13 @@ export default function DashboardPage() {
 
                         <div className={s.orderActions}>
                           <div className={s.orderActionsLeft}>
-                            <span className={s.orderTotal}>${order.total}</span>
+                            {order.order_type === 'loyalty'
+                              ? <span className={s.loyaltyOrderBadge}>⭐ {order.points_cost} pts</span>
+                              : <span className={s.orderTotal}>${order.total}</span>
+                            }
+                            {order.order_type === 'regular' && order.points_earned > 0 && (
+                              <span className={s.orderPointsEarn}>+{order.points_earned} pts</span>
+                            )}
                             <button
                               className={s.deleteOrderBtn}
                               onClick={() => setConfirmModal({ label: `Supprimer la commande #${order.id.slice(-6).toUpperCase()} ?`, onConfirm: () => deleteOrder(order.id) })}
@@ -702,19 +708,17 @@ export default function DashboardPage() {
                               )}
                             </button>
                           </div>
-                          <div className={s.statusSelect}>
+                          <select
+                            className={s.statusDropdown}
+                            value={order.status}
+                            disabled={statusUpdating[order.id]}
+                            style={{ color: st.color, borderColor: st.color + '55' }}
+                            onChange={e => updateStatus(order.id, e.target.value)}
+                          >
                             {STATUS_OPTIONS.map(opt => (
-                              <button
-                                key={opt.value}
-                                className={`${s.statusBtn} ${order.status === opt.value ? s.statusBtnActive : ''}`}
-                                style={order.status === opt.value ? { color: opt.color, borderColor: opt.color + '55', background: opt.color + '18' } : {}}
-                                onClick={() => updateStatus(order.id, opt.value)}
-                                disabled={statusUpdating[order.id] || order.status === opt.value}
-                              >
-                                {opt.label}
-                              </button>
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
                             ))}
-                          </div>
+                          </select>
                         </div>
                       </div>
                     );
