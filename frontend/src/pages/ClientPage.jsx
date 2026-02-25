@@ -15,7 +15,7 @@ function updateSeen(orderId) {
   localStorage.setItem(SEEN_KEY, JSON.stringify(map));
 }
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://purplecbd.onrender.com';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://purple-cbd-api.onrender.com';
 const LOGO = 'https://i.imgur.com/CbcU0Qp.png';
 
 const PRODUCTS = [
