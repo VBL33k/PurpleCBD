@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import ChatModal from '../components/Modal/ChatModal';
 import s from './DashboardPage.module.css';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://purplecbd.onrender.com';
@@ -15,11 +16,11 @@ const STATUS_OPTIONS = [
 ];
 
 /* ── Icons ── */
-function GridIcon() {
+function DashIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="8" height="8" rx="1.5" /><rect x="13" y="3" width="8" height="8" rx="1.5" />
-      <rect x="3" y="13" width="8" height="8" rx="1.5" /><rect x="13" y="13" width="8" height="8" rx="1.5" />
+      <rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/>
+      <rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>
     </svg>
   );
 }
@@ -63,10 +64,10 @@ function RefreshIcon() {
     </svg>
   );
 }
-function DiscordIcon() {
+function ChatIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
     </svg>
   );
 }
@@ -90,7 +91,7 @@ function StoreIcon() {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('members');
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   /* Members */
   const [members, setMembers] = useState([]);
@@ -106,8 +107,10 @@ export default function DashboardPage() {
   /* Settings */
   const [settings, setSettings] = useState({ delivery_enabled: false, store_open: false });
   const [settingsLoading, setSettingsLoading] = useState(false);
-  const [settingsSaving, setSettingsSaving] = useState(false);
-  const [settingsSaved, setSettingsSaved] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(null); // key being saved
+
+  /* Chat */
+  const [chatOrder, setChatOrder] = useState(null); // { id, ref }
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -130,12 +133,23 @@ export default function DashboardPage() {
       } catch (e) {
         setMembersError('Impossible de charger les membres.');
         console.error(e);
-      } finally {
-        setMembersLoading(false);
-      }
+      } finally { setMembersLoading(false); }
     }
     fetchMembers();
   }, []);
+
+  /* Load settings (on mount + dashboard tab) */
+  async function fetchSettings() {
+    setSettingsLoading(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/settings`);
+      const json = await res.json();
+      setSettings(json);
+    } catch (e) { console.error(e); }
+    finally { setSettingsLoading(false); }
+  }
+
+  useEffect(() => { fetchSettings(); }, []);
 
   /* Load orders */
   async function fetchOrders() {
@@ -153,26 +167,12 @@ export default function DashboardPage() {
     } catch (e) {
       setOrdersError('Impossible de charger les commandes.');
       console.error(e);
-    } finally {
-      setOrdersLoading(false);
-    }
-  }
-
-  /* Load settings */
-  async function fetchSettings() {
-    setSettingsLoading(true);
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/settings`);
-      const json = await res.json();
-      setSettings(json);
-    } catch (e) { console.error(e); }
-    finally { setSettingsLoading(false); }
+    } finally { setOrdersLoading(false); }
   }
 
   function handleTabChange(tab) {
     setActiveTab(tab);
     if (tab === 'orders') fetchOrders();
-    if (tab === 'settings') fetchSettings();
   }
 
   /* Update order status */
@@ -190,32 +190,46 @@ export default function DashboardPage() {
     finally { setStatusUpdating(prev => ({ ...prev, [orderId]: false })); }
   }
 
-  /* Save settings */
-  async function saveSettings() {
-    setSettingsSaving(true);
+  /* Toggle setting (instant save) */
+  async function toggleSetting(key) {
+    const newVal = !settings[key];
+    setSettings(prev => ({ ...prev, [key]: newVal }));
+    setSettingsSaving(key);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       await fetch(`${BACKEND_URL}/api/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({ [key]: newVal }),
       });
-      setSettingsSaved(true);
-      setTimeout(() => setSettingsSaved(false), 2500);
-    } catch (e) { console.error(e); }
-    finally { setSettingsSaving(false); }
+    } catch (e) { console.error(e); setSettings(prev => ({ ...prev, [key]: !newVal })); }
+    finally { setTimeout(() => setSettingsSaving(null), 1000); }
   }
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    navigate('/dashboard/login');
+    navigate('/'); // ← landing page
   }
 
   const displayName = user?.email?.split('@')[0] ?? 'Admin';
   const pendingCount = orders.filter(o => o.status === 'pending').length;
 
+  /* Dashboard stats */
+  const totalRevenue = orders.reduce((s, o) => s + (o.total || 0), 0);
+
   return (
     <div className={s.layout}>
+      {/* Chat Modal */}
+      {chatOrder && (
+        <ChatModal
+          orderId={chatOrder.id}
+          orderRef={chatOrder.id}
+          senderType="vendor"
+          senderName="Équipe Purple CBD"
+          onClose={() => setChatOrder(null)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside className={s.sidebar}>
         <div className={s.sidebarTop}>
@@ -226,6 +240,9 @@ export default function DashboardPage() {
 
           <nav className={s.nav}>
             <span className={s.navLabel}>Navigation</span>
+            <button className={`${s.navItem} ${activeTab === 'dashboard' ? s.navItemActive : ''}`} onClick={() => handleTabChange('dashboard')}>
+              <DashIcon /> Dashboard
+            </button>
             <button className={`${s.navItem} ${activeTab === 'members' ? s.navItemActive : ''}`} onClick={() => handleTabChange('members')}>
               <UsersIcon /> Membres
               {members.length > 0 && <span className={s.navBadge}>{members.length}</span>}
@@ -256,6 +273,90 @@ export default function DashboardPage() {
 
       {/* Main */}
       <main className={s.main}>
+
+        {/* ── Dashboard ── */}
+        {activeTab === 'dashboard' && (
+          <>
+            <header className={s.header}>
+              <div>
+                <h1 className={s.pageTitle}>Dashboard</h1>
+                <p className={s.pageSubtitle}>Vue d'ensemble et contrôle boutique</p>
+              </div>
+            </header>
+            <div className={s.content}>
+
+              {/* Stats row */}
+              <div className={s.statsRow}>
+                <div className={s.statCard}>
+                  <span className={s.statNum} style={{ color: '#f59e0b' }}>{pendingCount || members.length > 0 ? pendingCount : '—'}</span>
+                  <span className={s.statLabel}>Commandes en attente</span>
+                </div>
+                <div className={s.statCard}>
+                  <span className={s.statNum}>{members.length}</span>
+                  <span className={s.statLabel}>Membres inscrits</span>
+                </div>
+                <div className={s.statCard}>
+                  <span className={s.statNum}>${totalRevenue}</span>
+                  <span className={s.statLabel}>Chiffre total</span>
+                </div>
+              </div>
+
+              {/* Store controls */}
+              <div className={s.controlsCard}>
+                <h2 className={s.controlsTitle}>Contrôle boutique</h2>
+                <p className={s.controlsSub}>Les changements sont appliqués immédiatement pour les clients.</p>
+
+                {settingsLoading ? (
+                  <p className={s.stateMsg}>Chargement...</p>
+                ) : (
+                  <div className={s.toggleList}>
+                    <div className={s.toggleRow}>
+                      <div className={s.toggleInfo}>
+                        <div className={s.toggleLabelRow}>
+                          <span className={s.toggleLabel}>Boutique ouverte</span>
+                          <span className={`${s.statusDot} ${settings.store_open ? s.statusGreen : s.statusRed}`} />
+                          {settingsSaving === 'store_open' && <span className={s.savingHint}>Sauvegarde...</span>}
+                        </div>
+                        <span className={s.toggleDesc}>
+                          {settings.store_open ? 'Les clients sont informés que le magasin est ouvert.' : 'Le magasin est fermé — les clients verront un avertissement lors du retrait.'}
+                        </span>
+                      </div>
+                      <button
+                        className={`${s.toggle} ${settings.store_open ? s.toggleOn : ''}`}
+                        onClick={() => toggleSetting('store_open')}
+                        disabled={settingsSaving !== null}
+                        aria-label="Boutique ouverte"
+                      >
+                        <span className={s.toggleKnob} />
+                      </button>
+                    </div>
+
+                    <div className={s.toggleRow}>
+                      <div className={s.toggleInfo}>
+                        <div className={s.toggleLabelRow}>
+                          <span className={s.toggleLabel}>Livraison à domicile</span>
+                          <span className={`${s.statusDot} ${settings.delivery_enabled ? s.statusGreen : s.statusGray}`} />
+                          {settingsSaving === 'delivery_enabled' && <span className={s.savingHint}>Sauvegarde...</span>}
+                        </div>
+                        <span className={s.toggleDesc}>
+                          {settings.delivery_enabled ? 'Les clients peuvent choisir la livraison au checkout.' : 'La livraison est désactivée — seul le retrait est disponible.'}
+                        </span>
+                      </div>
+                      <button
+                        className={`${s.toggle} ${settings.delivery_enabled ? s.toggleOn : ''}`}
+                        onClick={() => toggleSetting('delivery_enabled')}
+                        disabled={settingsSaving !== null}
+                        aria-label="Livraison activée"
+                      >
+                        <span className={s.toggleKnob} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* ── Membres ── */}
         {activeTab === 'members' && (
@@ -328,11 +429,10 @@ export default function DashboardPage() {
               {!ordersLoading && !ordersError && orders.length > 0 && (
                 <div className={s.ordersList}>
                   {orders.map(order => {
-                    const st = STATUS_OPTIONS.find(s => s.value === order.status) || STATUS_OPTIONS[0];
+                    const st = STATUS_OPTIONS.find(o => o.value === order.status) || STATUS_OPTIONS[0];
                     return (
                       <div key={order.id} className={s.orderCard}>
                         <div className={s.orderCardTop}>
-                          {/* Client info */}
                           <div className={s.orderClient}>
                             {order.avatar_url
                               ? <img src={order.avatar_url} alt="" className={s.orderAvatar} />
@@ -340,11 +440,12 @@ export default function DashboardPage() {
                             }
                             <div className={s.orderClientInfo}>
                               <div className={s.orderClientName}>{order.rp_name || order.username || '—'}</div>
-                              <div className={s.orderClientSub}>{order.username}{order.rp_name && order.username !== order.rp_name ? ` · @${order.username}` : ''}</div>
+                              {order.rp_name && order.rp_name !== order.username && (
+                                <div className={s.orderClientSub}>@{order.username}</div>
+                              )}
                             </div>
                           </div>
 
-                          {/* Meta */}
                           <div className={s.orderMeta}>
                             <span className={s.orderId}>#{order.id.slice(-6).toUpperCase()}</span>
                             <span className={s.orderDate}>{new Date(order.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
@@ -353,41 +454,33 @@ export default function DashboardPage() {
                             </span>
                           </div>
 
-                          {/* Status badge */}
                           <span className={s.orderStatusBadge} style={{ color: st.color, borderColor: st.color + '33', background: st.color + '14' }}>
                             {st.label}
                           </span>
                         </div>
 
-                        {/* Items */}
                         <div className={s.orderItems}>
                           {(order.items || []).map((item, i) => (
                             <span key={i} className={s.orderItem}>{item.name} ×{item.qty}</span>
                           ))}
                         </div>
 
-                        {/* Address */}
                         {order.address && (
                           <div className={s.orderAddress}><TruckIcon /> {order.address}</div>
                         )}
-
-                        {/* Notes */}
                         {order.notes && (
                           <div className={s.orderNotes}>Note: {order.notes}</div>
                         )}
 
-                        {/* Actions */}
                         <div className={s.orderActions}>
                           <div className={s.orderActionsLeft}>
                             <span className={s.orderTotal}>${order.total}</span>
-                            <a
-                              href={`https://discord.com/users/${order.discord_id}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className={s.contactBtn}
+                            <button
+                              className={s.chatBtn}
+                              onClick={() => setChatOrder({ id: order.id })}
                             >
-                              <DiscordIcon /> Contacter
-                            </a>
+                              <ChatIcon /> Contacter
+                            </button>
                           </div>
                           <div className={s.statusSelect}>
                             {STATUS_OPTIONS.map(opt => (
@@ -418,55 +511,17 @@ export default function DashboardPage() {
             <header className={s.header}>
               <div>
                 <h1 className={s.pageTitle}>Paramètres</h1>
-                <p className={s.pageSubtitle}>Configuration de la boutique</p>
+                <p className={s.pageSubtitle}>Configuration avancée de la boutique</p>
               </div>
             </header>
             <div className={s.content}>
-              {settingsLoading ? (
-                <p className={s.stateMsg}>Chargement...</p>
-              ) : (
-                <div className={s.settingsCard}>
-                  <div className={s.settingsSection}>
-                    <h2 className={s.settingsSectionTitle}>État de la boutique</h2>
-                    <p className={s.settingsSectionSub}>Contrôle la disponibilité de la boutique pour les clients.</p>
-
-                    <div className={s.toggleRow}>
-                      <div className={s.toggleInfo}>
-                        <span className={s.toggleLabel}>Boutique ouverte</span>
-                        <span className={s.toggleDesc}>Quand activé, les clients voient que la boutique est ouverte pour les retraits.</span>
-                      </div>
-                      <button
-                        className={`${s.toggle} ${settings.store_open ? s.toggleOn : ''}`}
-                        onClick={() => setSettings(prev => ({ ...prev, store_open: !prev.store_open }))}
-                        aria-label="Boutique ouverte"
-                      >
-                        <span className={s.toggleKnob} />
-                      </button>
-                    </div>
-
-                    <div className={s.toggleRow}>
-                      <div className={s.toggleInfo}>
-                        <span className={s.toggleLabel}>Livraison à domicile</span>
-                        <span className={s.toggleDesc}>Quand activé, les clients peuvent choisir la livraison lors du checkout.</span>
-                      </div>
-                      <button
-                        className={`${s.toggle} ${settings.delivery_enabled ? s.toggleOn : ''}`}
-                        onClick={() => setSettings(prev => ({ ...prev, delivery_enabled: !prev.delivery_enabled }))}
-                        aria-label="Livraison activée"
-                      >
-                        <span className={s.toggleKnob} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className={s.settingsFooter}>
-                    {settingsSaved && <span className={s.savedMsg}>✓ Sauvegardé</span>}
-                    <button className={s.saveBtn} onClick={saveSettings} disabled={settingsSaving}>
-                      {settingsSaving ? 'Sauvegarde...' : 'Enregistrer les paramètres'}
-                    </button>
-                  </div>
+              <div className={s.emptySettings}>
+                <div className={s.emptySettingsIcon}>
+                  <SettingsIcon />
                 </div>
-              )}
+                <p className={s.emptySettingsText}>Aucun paramètre avancé pour l'instant.</p>
+                <p className={s.emptySettingsSub}>Cette section sera complétée prochainement.</p>
+              </div>
             </div>
           </>
         )}

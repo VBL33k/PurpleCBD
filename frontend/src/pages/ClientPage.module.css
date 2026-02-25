@@ -206,7 +206,6 @@
 /* ── Shop View ── */
 .shopView {
   padding: 36px 36px 140px;
-  max-width: 860px;
 }
 
 .shopHeader {
@@ -921,13 +920,94 @@
 /* ── Orders View ── */
 .ordersView {
   padding: 36px 36px 60px;
-  max-width: 860px;
+}
+
+.ordersLayout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
 }
 
 .ordersList {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* ── Stats Panel ── */
+.statsPanel {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.statsPanelTitle {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.statItem:last-of-type { border-bottom: none; }
+
+.statItemNum {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--white);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.statItemLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.statFavorite {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.statFavLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.statFavName {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--v200);
 }
 
 .orderCard {
@@ -1011,11 +1091,39 @@
   color: var(--text-muted);
 }
 
+.orderFooterRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .orderTotal {
   font-family: var(--font-display);
   font-size: 18px;
   font-weight: 700;
   color: var(--white);
+}
+
+.orderChatBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 7px;
+  color: var(--v300);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.orderChatBtn:hover {
+  background: rgba(139, 92, 246, 0.16);
+  border-color: rgba(139, 92, 246, 0.4);
+  color: var(--v200);
 }
 
 .emptyOrders {

@@ -34,6 +34,22 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'Purple CBD API', version: '1.0.0' });
 });
 
+// ── Discord notify ──
+const DISCORD_CHANNEL_ID = '1476199936508039304';
+
+async function sendDiscordMessage(content) {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) { console.log('[Discord notify skipped — no DISCORD_BOT_TOKEN]', content.slice(0, 80)); return; }
+  try {
+    const res = await fetch(`https://discord.com/api/v10/channels/${DISCORD_CHANNEL_ID}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bot ${token}` },
+      body: JSON.stringify({ content }),
+    });
+    if (!res.ok) console.error('Discord API error:', await res.text());
+  } catch (err) { console.error('Discord send error:', err); }
+}
+
 // ── Discord OAuth ──
 app.post('/api/auth/discord/callback', async (req, res) => {
   const { code, redirectUri } = req.body;
@@ -118,6 +134,21 @@ app.put('/api/settings', async (req, res) => {
     const { error } = await supabase.from('settings').upsert(u, { onConflict: 'key' });
     if (error) return res.status(500).json({ error: 'Erreur mise à jour paramètre.' });
   }
+
+  // Discord notifications for settings changes
+  if (store_open !== undefined) {
+    sendDiscordMessage(store_open
+      ? '🟢 La boutique est maintenant **ouverte**.'
+      : '🔴 La boutique est maintenant **fermée**.'
+    ).catch(() => {});
+  }
+  if (delivery_enabled !== undefined) {
+    sendDiscordMessage(delivery_enabled
+      ? '🚗 La livraison à domicile est maintenant **activée**.'
+      : '🚫 La livraison à domicile est maintenant **désactivée**.'
+    ).catch(() => {});
+  }
+
   res.json({ ok: true });
 });
 
@@ -143,6 +174,19 @@ app.post('/api/orders', async (req, res) => {
   }).select('id').single();
 
   if (error) { console.error('Order insert error:', error); return res.status(500).json({ error: 'Erreur création commande.' }); }
+
+  // Discord notification
+  const itemsStr = items.map(i => `${i.name} ×${i.qty}`).join(', ');
+  const deliveryStr = (deliveryType === 'delivery') ? '🚗 Livraison' : '🏪 Retrait en magasin';
+  const addrStr = address ? `\n📍 ${address}` : '';
+  const notesStr = notes ? `\n📝 ${notes}` : '';
+  sendDiscordMessage(
+    `🛒 **Nouvelle commande** | #${data.id.slice(-6).toUpperCase()}\n` +
+    `👤 **${rpName || username || 'Client'}**\n` +
+    `📦 ${itemsStr}\n` +
+    `💰 **$${total}** — ${deliveryStr}${addrStr}${notesStr}`
+  ).catch(() => {});
+
   res.json({ ok: true, orderId: data.id });
 });
 

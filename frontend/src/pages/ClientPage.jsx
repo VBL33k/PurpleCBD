@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getStoredUser, clearUser, updateStoredUser } from '../lib/discordAuth';
+import ChatModal from '../components/Modal/ChatModal';
 import s from './ClientPage.module.css';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://purplecbd.onrender.com';
@@ -45,6 +46,7 @@ function StoreIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fi
 function TruckIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>; }
 function WarnIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>; }
 function CardIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>; }
+function ChatIcon() { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>; }
 
 export default function ClientPage() {
   const navigate = useNavigate();
@@ -61,6 +63,7 @@ export default function ClientPage() {
   const [settings, setSettings] = useState({ delivery_enabled: false, store_open: false });
   const [myOrders, setMyOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [chatOrder, setChatOrder] = useState(null); // { id } for chat modal
 
   /* RP Popup */
   const [showRpPopup, setShowRpPopup] = useState(false);
@@ -174,8 +177,33 @@ export default function ClientPage() {
   const displayName = user.rpName || user.username || 'Client';
   const avatar = user.avatarUrl;
 
+  /* Order stats */
+  const orderStats = {
+    total:     myOrders.length,
+    spent:     myOrders.reduce((s, o) => s + (o.total || 0), 0),
+    active:    myOrders.filter(o => !['delivered', 'cancelled'].includes(o.status)).length,
+    delivered: myOrders.filter(o => o.status === 'delivered').length,
+    cancelled: myOrders.filter(o => o.status === 'cancelled').length,
+    favorite:  (() => {
+      const counts = {};
+      myOrders.forEach(o => (o.items || []).forEach(i => { counts[i.name] = (counts[i.name] || 0) + i.qty; }));
+      return Object.entries(counts).sort(([,a],[,b]) => b - a)[0]?.[0] || null;
+    })(),
+  };
+
   return (
     <div className={s.layout}>
+
+      {/* ── Chat Modal ── */}
+      {chatOrder && (
+        <ChatModal
+          orderId={chatOrder.id}
+          orderRef={chatOrder.id}
+          senderType="client"
+          senderName={displayName}
+          onClose={() => setChatOrder(null)}
+        />
+      )}
 
       {/* ── RP Popup ── */}
       {showRpPopup && (
@@ -315,34 +343,81 @@ export default function ClientPage() {
                 <button className={s.emptyBtn} onClick={() => setActiveTab('shop')}>Passer une commande</button>
               </div>
             ) : (
-              <div className={s.ordersList}>
-                {myOrders.map(order => {
-                  const st = STATUS_LABELS[order.status] || STATUS_LABELS.pending;
-                  return (
-                    <div key={order.id} className={s.orderCard}>
-                      <div className={s.orderCardHeader}>
-                        <div className={s.orderMeta}>
-                          <span className={s.orderId}>#{order.id.slice(-6).toUpperCase()}</span>
-                          <span className={s.orderDate}>{new Date(order.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+              <div className={s.ordersLayout}>
+                {/* Orders list */}
+                <div className={s.ordersList}>
+                  {myOrders.map(order => {
+                    const st = STATUS_LABELS[order.status] || STATUS_LABELS.pending;
+                    return (
+                      <div key={order.id} className={s.orderCard}>
+                        <div className={s.orderCardHeader}>
+                          <div className={s.orderMeta}>
+                            <span className={s.orderId}>#{order.id.slice(-6).toUpperCase()}</span>
+                            <span className={s.orderDate}>{new Date(order.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                          </div>
+                          <span className={s.orderStatus} style={{ color: st.color, borderColor: st.color + '33', background: st.color + '14' }}>
+                            {st.label}
+                          </span>
                         </div>
-                        <span className={s.orderStatus} style={{ color: st.color, borderColor: st.color + '33', background: st.color + '14' }}>
-                          {st.label}
-                        </span>
+                        <div className={s.orderItems}>
+                          {(order.items || []).map((item, i) => (
+                            <span key={i} className={s.orderItem}>{item.name} ×{item.qty}</span>
+                          ))}
+                        </div>
+                        <div className={s.orderFooter}>
+                          <span className={s.orderType}>
+                            {order.delivery_type === 'delivery' ? <><TruckIcon /> Livraison</> : <><StoreIcon /> Retrait en magasin</>}
+                          </span>
+                          <div className={s.orderFooterRight}>
+                            <span className={s.orderTotal}>${order.total}</span>
+                            <button className={s.orderChatBtn} onClick={() => setChatOrder({ id: order.id })}>
+                              <ChatIcon /> Chat
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <div className={s.orderItems}>
-                        {(order.items || []).map((item, i) => (
-                          <span key={i} className={s.orderItem}>{item.name} ×{item.qty}</span>
-                        ))}
-                      </div>
-                      <div className={s.orderFooter}>
-                        <span className={s.orderType}>
-                          {order.delivery_type === 'delivery' ? <><TruckIcon /> Livraison</> : <><StoreIcon /> Retrait en magasin</>}
-                        </span>
-                        <span className={s.orderTotal}>${order.total}</span>
-                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Stats panel */}
+                <div className={s.statsPanel}>
+                  <h3 className={s.statsPanelTitle}>Statistiques</h3>
+
+                  <div className={s.statItem}>
+                    <span className={s.statItemNum}>{orderStats.total}</span>
+                    <span className={s.statItemLabel}>Commandes passées</span>
+                  </div>
+
+                  <div className={s.statItem}>
+                    <span className={s.statItemNum}>${orderStats.spent}</span>
+                    <span className={s.statItemLabel}>Total dépensé</span>
+                  </div>
+
+                  <div className={s.statItem}>
+                    <span className={s.statItemNum} style={{ color: '#f59e0b' }}>{orderStats.active}</span>
+                    <span className={s.statItemLabel}>En cours</span>
+                  </div>
+
+                  <div className={s.statItem}>
+                    <span className={s.statItemNum} style={{ color: '#10b981' }}>{orderStats.delivered}</span>
+                    <span className={s.statItemLabel}>Livrées</span>
+                  </div>
+
+                  {orderStats.cancelled > 0 && (
+                    <div className={s.statItem}>
+                      <span className={s.statItemNum} style={{ color: '#ef4444' }}>{orderStats.cancelled}</span>
+                      <span className={s.statItemLabel}>Annulées</span>
                     </div>
-                  );
-                })}
+                  )}
+
+                  {orderStats.favorite && (
+                    <div className={s.statFavorite}>
+                      <span className={s.statFavLabel}>Produit favori</span>
+                      <span className={s.statFavName}>{orderStats.favorite}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
