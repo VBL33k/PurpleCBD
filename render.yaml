@@ -25,6 +25,7 @@ services:
     rootDir: backend
     buildCommand: npm install
     startCommand: npm start
+    healthCheckPath: /api/health
     plan: free
     envVars:
       - key: NODE_ENV
@@ -34,3 +35,16 @@ services:
           name: purple-cbd-frontend
           type: web
           property: host
+      # ── Secrets — set manually in Render dashboard ──
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DISCORD_CLIENT_ID
+        sync: false
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: BOT_URL
+        sync: false
