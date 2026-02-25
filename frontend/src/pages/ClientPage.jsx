@@ -319,6 +319,7 @@ export default function ClientPage() {
         }),
       });
       if (!res.ok) throw new Error('Order failed');
+      setPendingPoints(prev => prev + cartTotal); // pts en attente jusqu'à la remise
       setOrderSuccess(true);
       setTimeout(() => {
         setQuantities({});
@@ -356,9 +357,9 @@ export default function ClientPage() {
   /* Order stats */
   const orderStats = {
     total:     myOrders.length,
-    spent:     myOrders.reduce((s, o) => s + (o.total || 0), 0),
-    active:    myOrders.filter(o => !['delivered', 'cancelled'].includes(o.status)).length,
-    delivered: myOrders.filter(o => o.status === 'delivered').length,
+    spent:     myOrders.filter(o => o.order_type !== 'loyalty').reduce((s, o) => s + (o.total || 0), 0),
+    active:    myOrders.filter(o => !['delivered', 'picked_up', 'cancelled'].includes(o.status)).length,
+    delivered: myOrders.filter(o => o.status === 'delivered' || o.status === 'picked_up').length,
     cancelled: myOrders.filter(o => o.status === 'cancelled').length,
     favorite:  (() => {
       const counts = {};
@@ -586,7 +587,7 @@ export default function ClientPage() {
 
                   <div className={s.statItem}>
                     <span className={s.statItemNum} style={{ color: '#10b981' }}>{orderStats.delivered}</span>
-                    <span className={s.statItemLabel}>Livrées</span>
+                    <span className={s.statItemLabel}>Complétées</span>
                   </div>
 
                   {orderStats.cancelled > 0 && (
