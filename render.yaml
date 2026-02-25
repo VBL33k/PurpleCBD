@@ -12,15 +12,12 @@ services:
         source: /*
         destination: /index.html
     envVars:
-      - key: VITE_API_URL
-        fromService:
-          name: purple-cbd-api
-          type: web
-          property: host
+      - key: VITE_BACKEND_URL
+        value: https://purplecbd.onrender.com
 
   # ── Backend (Node.js API) ───────────────────────────────────
   - type: web
-    name: purple-cbd-api
+    name: purplecbd
     runtime: node
     rootDir: backend
     buildCommand: npm install
@@ -31,10 +28,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: FRONTEND_URL
-        fromService:
-          name: purple-cbd-frontend
-          type: web
-          property: host
+        sync: false
       # ── Secrets — set manually in Render dashboard ──
       - key: SUPABASE_URL
         sync: false
