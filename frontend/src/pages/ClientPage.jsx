@@ -94,11 +94,18 @@ export default function ClientPage() {
       .then(r => r.json())
       .then(d => setSettings(d))
       .catch(() => {});
-    // Ban check on mount
+    // Ban check + rp_name sync on mount
     if (stored.discordId) {
       fetch(`${BACKEND_URL}/api/members/check?discord_id=${stored.discordId}`)
         .then(r => r.json())
-        .then(d => { if (d.banned) setBanData({ message: d.message }); })
+        .then(d => {
+          if (d.banned) { setBanData({ message: d.message }); return; }
+          // Si le nom RP a été effacé côté serveur (reset), réafficher le popup
+          if (d.rpName === null && stored.rpName) {
+            updateStoredUser({ rpName: null });
+            setShowRpPopup(true);
+          }
+        })
         .catch(() => {});
     }
   }, [navigate]);

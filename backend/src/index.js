@@ -144,13 +144,13 @@ app.get('/api/members/check', async (req, res) => {
   if (!discord_id) return res.status(400).json({ error: 'discord_id requis.' });
   const { data } = await supabase
     .from('members')
-    .select('banned, ban_message')
+    .select('banned, ban_message, rp_name')
     .eq('discord_id', discord_id)
     .maybeSingle();
   if (data?.banned) {
     return res.json({ banned: true, message: data.ban_message || 'Votre compte a été banni.' });
   }
-  res.json({ banned: false });
+  res.json({ banned: false, rpName: data?.rp_name || null });
 });
 
 app.get('/api/members', async (req, res) => {
@@ -164,7 +164,7 @@ app.get('/api/members', async (req, res) => {
   res.json({ members: data });
 });
 
-// Reset compte membre (pts + commandes)
+// Reset compte membre (pts + commandes + nom RP)
 app.post('/api/members/:discordId/reset', async (req, res) => {
   const user = await requireAdmin(req, res);
   if (!user) return;
@@ -172,7 +172,7 @@ app.post('/api/members/:discordId/reset', async (req, res) => {
   await supabase.from('orders').delete().eq('discord_id', discordId);
   const { error } = await supabase
     .from('members')
-    .update({ loyalty_points: 0, updated_at: new Date().toISOString() })
+    .update({ loyalty_points: 0, rp_name: null, updated_at: new Date().toISOString() })
     .eq('discord_id', discordId);
   if (error) return res.status(500).json({ error: 'Erreur reset.' });
   res.json({ ok: true });
