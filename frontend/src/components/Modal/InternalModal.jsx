@@ -2,7 +2,7 @@ import Modal from './Modal';
 import s from './Modal.module.css';
 
 const LOGO = 'https://i.imgur.com/CbcU0Qp.png';
-const DASHBOARD_URL = 'https://purple-cbd-frontend.onrender.com/dashboard/login';
+const DASHBOARD_URL = '/dashboard/login';
 
 export default function InternalModal({ isOpen, onClose }) {
   return (
