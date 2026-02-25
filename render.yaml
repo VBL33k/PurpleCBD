@@ -13,7 +13,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_BACKEND_URL
-        value: https://purplecbd.onrender.com
+        value: https://purple-cbd-api.onrender.com
 
   # ── Backend (Node.js API) ───────────────────────────────────
   - type: web
