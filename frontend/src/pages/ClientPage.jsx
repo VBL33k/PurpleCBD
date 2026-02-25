@@ -7,76 +7,64 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://purplecbd.onren
 const LOGO = 'https://i.imgur.com/CbcU0Qp.png';
 
 const PRODUCTS = [
-  {
-    id: 1, name: 'Purple Haze', strain: 'Sativa Dominante', badge: 'Signature', number: '01',
-    price: 150, theme: 'purple',
-    tags: ['Créatif', 'Euphorisant', 'Baies Sauvages', 'Diurne'],
-    desc: "Des notes de baies sauvages et de fruits sombres s'épanouissent en un boost créatif d'une rare intensité.",
-  },
-  {
-    id: 2, name: 'OG Kush', strain: 'Indica Dominante', badge: 'VIP Select', number: '02',
-    price: 150, theme: 'deep',
-    tags: ['Relaxation', 'Intense', 'Terreux', 'Nocturne'],
-    desc: "Un arôme terreux, boisé, aux accents de pin et d'épices. Une relaxation d'une profondeur VIP.",
-  },
-  {
-    id: 3, name: 'Lemon Haze', strain: 'Sativa Pure', badge: 'Fresh Cut', number: '03',
-    price: 150, theme: 'light',
-    tags: ['Énergie', 'Focus', 'Citronné', 'Productivité'],
-    desc: "Une fraîcheur citronnée vive et pétillante qui ouvre les sens et affine la concentration.",
-  },
-  {
-    id: 4, name: 'Dark Devil', strain: 'Hybrid Exclusive', badge: 'Ultra Rare', number: '04',
-    price: 150, theme: 'dark',
-    tags: ['Exclusif', 'Encens', 'Sucré', 'Prestige'],
-    desc: "La pièce maîtresse. Des teintes anthracite et améthyste, un goût sucré d'encens qui enveloppe.",
-  },
+  { id: 1, name: 'Purple Haze', strain: 'Sativa Dominante', badge: 'Signature', price: 150,
+    tags: ['Créatif', 'Euphorisant', 'Diurne'],
+    desc: "Notes de baies sauvages et boost créatif d'une rare intensité." },
+  { id: 2, name: 'OG Kush', strain: 'Indica Dominante', badge: 'VIP Select', price: 150,
+    tags: ['Relaxation', 'Intense', 'Nocturne'],
+    desc: "Arôme terreux boisé aux accents de pin et d'épices. Relaxation profonde." },
+  { id: 3, name: 'Lemon Haze', strain: 'Sativa Pure', badge: 'Fresh Cut', price: 150,
+    tags: ['Énergie', 'Focus', 'Citronné'],
+    desc: "Fraîcheur citronnée vive qui ouvre les sens et affine la concentration." },
+  { id: 4, name: 'Dark Devil', strain: 'Hybrid Exclusive', badge: 'Ultra Rare', price: 150,
+    tags: ['Exclusif', 'Sucré', 'Prestige'],
+    desc: "Teintes anthracite et améthyste. Goût sucré d'encens qui enveloppe." },
 ];
 
-/* ── Icons ── */
-function ShopIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>;
-}
-function OrdersIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
-}
-function StarIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
-}
-function LogoutIcon() {
-  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
-}
-function PlusIcon() {
-  return <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
-}
-function MinusIcon() {
-  return <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>;
-}
-function CartIcon() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>;
-}
-function CloseIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
-}
-function CheckIcon() {
-  return <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
-}
+const STATUS_LABELS = {
+  pending:   { label: 'En attente',  color: '#f59e0b' },
+  confirmed: { label: 'Confirmée',   color: '#8b5cf6' },
+  ready:     { label: 'Prête',       color: '#06b6d4' },
+  delivered: { label: 'Livrée',      color: '#10b981' },
+  cancelled: { label: 'Annulée',     color: '#ef4444' },
+};
 
-const THEME_CLASS = { purple: s.themePurple, deep: s.themeDeep, light: s.themeLight, dark: s.themeDark };
+/* ── Icons ── */
+function ShopIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>; }
+function OrdersIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>; }
+function StarIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>; }
+function LogoutIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>; }
+function PlusIcon() { return <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>; }
+function MinusIcon() { return <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>; }
+function CartIcon() { return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>; }
+function CloseIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>; }
+function CheckIcon() { return <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>; }
+function SearchIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>; }
+function ImageIcon() { return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>; }
+function StoreIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>; }
+function TruckIcon() { return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>; }
+function WarnIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>; }
+function CardIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>; }
 
 export default function ClientPage() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const [user, setUser]         = useState(null);
   const [activeTab, setActiveTab] = useState('shop');
   const [quantities, setQuantities] = useState({});
+  const [search, setSearch]     = useState('');
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [deliveryType, setDeliveryType] = useState('pickup');
+  const [address, setAddress]   = useState('');
   const [orderNotes, setOrderNotes] = useState('');
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderLoading, setOrderLoading] = useState(false);
+  const [settings, setSettings] = useState({ delivery_enabled: false, store_open: false });
+  const [myOrders, setMyOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
 
   /* RP Popup */
   const [showRpPopup, setShowRpPopup] = useState(false);
-  const [rpName, setRpName] = useState('');
+  const [rpName, setRpName]     = useState('');
   const [rpLoading, setRpLoading] = useState(false);
 
   useEffect(() => {
@@ -84,6 +72,11 @@ export default function ClientPage() {
     if (!stored) { navigate('/'); return; }
     setUser(stored);
     if (!stored.rpName) setShowRpPopup(true);
+    // Load store settings
+    fetch(`${BACKEND_URL}/api/settings`)
+      .then(r => r.json())
+      .then(d => setSettings(d))
+      .catch(() => {});
   }, [navigate]);
 
   async function handleRpSubmit(e) {
@@ -115,23 +108,69 @@ export default function ClientPage() {
     setQuantities(prev => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) + delta) }));
   }
 
+  /* Filtered products */
+  const filtered = PRODUCTS.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    p.strain.toLowerCase().includes(search.toLowerCase()) ||
+    p.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  /* Load my orders */
+  async function loadMyOrders() {
+    if (!user) return;
+    setOrdersLoading(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/orders/me?discord_id=${user.discordId}`);
+      const json = await res.json();
+      setMyOrders(json.orders || []);
+    } catch (e) { console.error(e); }
+    finally { setOrdersLoading(false); }
+  }
+
+  function handleTabChange(tab) {
+    setActiveTab(tab);
+    if (tab === 'orders') loadMyOrders();
+  }
+
   async function handleOrder() {
     if (!cartItems.length) return;
+    if (deliveryType === 'delivery' && !address.trim()) return;
     setOrderLoading(true);
-    // TODO: POST /api/orders quand l'endpoint sera prêt
-    await new Promise(r => setTimeout(r, 1200));
-    setOrderSuccess(true);
-    setOrderLoading(false);
-    setTimeout(() => {
-      setQuantities({});
-      setCheckoutOpen(false);
-      setOrderSuccess(false);
-      setOrderNotes('');
-    }, 2800);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          discordId: user.discordId,
+          username: user.username,
+          rpName: user.rpName,
+          avatarUrl: user.avatarUrl,
+          items: cartItems.map(i => ({ id: i.id, name: i.name, qty: i.qty, price: i.price })),
+          total: cartTotal,
+          deliveryType,
+          address: deliveryType === 'delivery' ? address : null,
+          notes: orderNotes || null,
+        }),
+      });
+      if (!res.ok) throw new Error('Order failed');
+      setOrderSuccess(true);
+      setTimeout(() => {
+        setQuantities({});
+        setCheckoutOpen(false);
+        setOrderSuccess(false);
+        setOrderNotes('');
+        setAddress('');
+        setDeliveryType('pickup');
+      }, 2800);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de l'envoi de la commande. Réessaie.");
+    } finally {
+      setOrderLoading(false);
+    }
   }
 
   if (!user) return null;
-
   const displayName = user.rpName || user.username || 'Client';
   const avatar = user.avatarUrl;
 
@@ -147,7 +186,8 @@ export default function ClientPage() {
             <h2 className={s.popupTitle}>Bienvenue !</h2>
             <p className={s.popupSub}>Avant de continuer, entre ton nom RP</p>
             <form onSubmit={handleRpSubmit} className={s.popupForm}>
-              <input type="text" className={s.popupInput} placeholder="Ex: John Smith" value={rpName} onChange={e => setRpName(e.target.value)} required autoFocus maxLength={32} />
+              <input type="text" className={s.popupInput} placeholder="Ex: John Smith" value={rpName}
+                onChange={e => setRpName(e.target.value)} required autoFocus maxLength={32} />
               <button type="submit" className={s.popupBtn} disabled={rpLoading}>
                 {rpLoading ? 'Enregistrement...' : 'Confirmer'}
               </button>
@@ -163,48 +203,29 @@ export default function ClientPage() {
             <img src={LOGO} alt="Purple CBD" className={s.logo} />
             <span className={s.logoName}>Purple CBD</span>
           </Link>
-
           <nav className={s.nav}>
             <span className={s.navLabel}>Espace Client</span>
-
-            <button
-              className={`${s.navItem} ${activeTab === 'shop' ? s.navItemActive : ''}`}
-              onClick={() => setActiveTab('shop')}
-            >
+            <button className={`${s.navItem} ${activeTab === 'shop' ? s.navItemActive : ''}`} onClick={() => handleTabChange('shop')}>
               <ShopIcon /> Commander
               {cartCount > 0 && <span className={s.cartBadge}>{cartCount}</span>}
             </button>
-
-            <button
-              className={`${s.navItem} ${activeTab === 'orders' ? s.navItemActive : ''}`}
-              onClick={() => setActiveTab('orders')}
-            >
+            <button className={`${s.navItem} ${activeTab === 'orders' ? s.navItemActive : ''}`} onClick={() => handleTabChange('orders')}>
               <OrdersIcon /> Mes Commandes
             </button>
-
-            <button
-              className={`${s.navItem} ${activeTab === 'loyalty' ? s.navItemActive : ''}`}
-              onClick={() => setActiveTab('loyalty')}
-            >
+            <button className={`${s.navItem} ${activeTab === 'loyalty' ? s.navItemActive : ''}`} onClick={() => handleTabChange('loyalty')}>
               <StarIcon /> Fidélité
             </button>
           </nav>
         </div>
-
         <div className={s.sidebarBottom}>
           <div className={s.userCard}>
-            {avatar
-              ? <img src={avatar} alt="" className={s.userAvatar} />
-              : <div className={s.userAvatarFallback}>{displayName[0].toUpperCase()}</div>
-            }
+            {avatar ? <img src={avatar} alt="" className={s.userAvatar} /> : <div className={s.userAvatarFallback}>{displayName[0].toUpperCase()}</div>}
             <div className={s.userInfo}>
               <span className={s.userName}>{displayName}</span>
               <span className={s.userRole}>Client</span>
             </div>
           </div>
-          <button className={s.logoutBtn} onClick={handleLogout}>
-            <LogoutIcon /> Déconnexion
-          </button>
+          <button className={s.logoutBtn} onClick={handleLogout}><LogoutIcon /> Déconnexion</button>
         </div>
       </aside>
 
@@ -215,35 +236,59 @@ export default function ClientPage() {
         {activeTab === 'shop' && (
           <div className={s.shopView}>
             <div className={s.shopHeader}>
-              <span className={s.shopLabel}>COLLECTION EXCLUSIVE</span>
               <h1 className={s.shopTitle}>Commander</h1>
-              <p className={s.shopSub}>Sélectionne tes produits et passe ta commande en quelques secondes</p>
+              <p className={s.shopSub}>Sélectionne tes produits, le panier s'affiche en bas</p>
             </div>
 
-            <div className={s.productGrid}>
-              {PRODUCTS.map(p => {
+            {/* Search */}
+            <div className={s.searchBar}>
+              <span className={s.searchIcon}><SearchIcon /></span>
+              <input
+                type="text"
+                className={s.searchInput}
+                placeholder="Rechercher un produit, une variété, un effet..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+              {search && <button className={s.searchClear} onClick={() => setSearch('')}><CloseIcon /></button>}
+            </div>
+
+            {/* Product list */}
+            <div className={s.productList}>
+              {filtered.length === 0 && (
+                <div className={s.noResults}>Aucun produit ne correspond à "{search}"</div>
+              )}
+              {filtered.map(p => {
                 const qty = quantities[p.id] || 0;
                 return (
-                  <div key={p.id} className={`${s.productCard} ${THEME_CLASS[p.theme]}`}>
-                    <div className={s.cardTopRow}>
-                      <span className={s.cardNumber}>{p.number}</span>
-                      <span className={s.cardBadge}>{p.badge}</span>
+                  <div key={p.id} className={s.productRow}>
+                    {/* Image placeholder */}
+                    <div className={s.productImg}>
+                      <ImageIcon />
                     </div>
-                    <h3 className={s.cardName}>{p.name}</h3>
-                    <p className={s.cardStrain}>{p.strain}</p>
-                    <p className={s.cardDesc}>{p.desc}</p>
-                    <div className={s.cardTags}>
-                      {p.tags.map(t => <span key={t} className={s.cardTag}>{t}</span>)}
+
+                    {/* Info */}
+                    <div className={s.productInfo}>
+                      <div className={s.productNameRow}>
+                        <span className={s.productName}>{p.name}</span>
+                        <span className={s.productBadge}>{p.badge}</span>
+                      </div>
+                      <span className={s.productStrain}>{p.strain}</span>
+                      <div className={s.productTags}>
+                        {p.tags.map(t => <span key={t} className={s.productTag}>{t}</span>)}
+                      </div>
                     </div>
-                    <div className={s.cardFooter}>
-                      <span className={s.cardPrice}>${p.price}</span>
+
+                    {/* Price + qty */}
+                    <div className={s.productActions}>
+                      <span className={s.productPrice}>${p.price}</span>
                       {qty === 0 ? (
                         <button className={s.addBtn} onClick={() => changeQty(p.id, 1)}>Ajouter</button>
                       ) : (
                         <div className={s.qtyControl}>
-                          <button className={s.qtyBtn} onClick={() => changeQty(p.id, -1)} aria-label="Retirer"><MinusIcon /></button>
+                          <button className={s.qtyBtn} onClick={() => changeQty(p.id, -1)}><MinusIcon /></button>
                           <span className={s.qtyNum}>{qty}</span>
-                          <button className={s.qtyBtn} onClick={() => changeQty(p.id, 1)} aria-label="Ajouter"><PlusIcon /></button>
+                          <button className={s.qtyBtn} onClick={() => changeQty(p.id, 1)}><PlusIcon /></button>
                         </div>
                       )}
                     </div>
@@ -256,11 +301,50 @@ export default function ClientPage() {
 
         {/* ── Mes Commandes ── */}
         {activeTab === 'orders' && (
-          <div className={s.centeredView}>
-            <div className={s.emptyIcon}><OrdersIcon /></div>
-            <h2 className={s.emptyTitle}>Mes Commandes</h2>
-            <p className={s.emptySub}>L'historique de tes commandes sera disponible prochainement.</p>
-            <span className={s.emptyBadge}>Bientôt</span>
+          <div className={s.ordersView}>
+            <div className={s.shopHeader}>
+              <h1 className={s.shopTitle}>Mes Commandes</h1>
+              <p className={s.shopSub}>Historique et suivi de tes commandes</p>
+            </div>
+            {ordersLoading ? (
+              <div className={s.stateMsg}>Chargement...</div>
+            ) : myOrders.length === 0 ? (
+              <div className={s.emptyOrders}>
+                <div className={s.emptyIcon}><OrdersIcon /></div>
+                <p className={s.emptyText}>Aucune commande pour l'instant</p>
+                <button className={s.emptyBtn} onClick={() => setActiveTab('shop')}>Passer une commande</button>
+              </div>
+            ) : (
+              <div className={s.ordersList}>
+                {myOrders.map(order => {
+                  const st = STATUS_LABELS[order.status] || STATUS_LABELS.pending;
+                  return (
+                    <div key={order.id} className={s.orderCard}>
+                      <div className={s.orderCardHeader}>
+                        <div className={s.orderMeta}>
+                          <span className={s.orderId}>#{order.id.slice(-6).toUpperCase()}</span>
+                          <span className={s.orderDate}>{new Date(order.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                        </div>
+                        <span className={s.orderStatus} style={{ color: st.color, borderColor: st.color + '33', background: st.color + '14' }}>
+                          {st.label}
+                        </span>
+                      </div>
+                      <div className={s.orderItems}>
+                        {(order.items || []).map((item, i) => (
+                          <span key={i} className={s.orderItem}>{item.name} ×{item.qty}</span>
+                        ))}
+                      </div>
+                      <div className={s.orderFooter}>
+                        <span className={s.orderType}>
+                          {order.delivery_type === 'delivery' ? <><TruckIcon /> Livraison</> : <><StoreIcon /> Retrait en magasin</>}
+                        </span>
+                        <span className={s.orderTotal}>${order.total}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -268,14 +352,9 @@ export default function ClientPage() {
         {activeTab === 'loyalty' && (
           <div className={s.centeredView}>
             <div className={s.loyaltyCard}>
-              <div className={s.loyaltyPoints}>
-                <span className={s.loyaltyNum}>0</span>
-                <span className={s.loyaltyUnit}>pts</span>
-              </div>
+              <div className={s.loyaltyPoints}><span className={s.loyaltyNum}>0</span><span className={s.loyaltyUnit}>pts</span></div>
               <h2 className={s.loyaltyTitle}>Points de Fidélité</h2>
-              <p className={s.loyaltySub}>
-                Gagne des points à chaque commande et débloque des récompenses exclusives réservées à nos membres.
-              </p>
+              <p className={s.loyaltySub}>Gagne des points à chaque commande et débloque des récompenses exclusives réservées à nos membres.</p>
               <span className={s.emptyBadge}>Bientôt</span>
             </div>
           </div>
@@ -292,19 +371,14 @@ export default function ClientPage() {
           </div>
           <div className={s.cartBarRight}>
             <span className={s.cartBarTotal}>${cartTotal}</span>
-            <button className={s.cartBarBtn} onClick={() => setCheckoutOpen(true)}>
-              Passer la commande →
-            </button>
+            <button className={s.cartBarBtn} onClick={() => setCheckoutOpen(true)}>Passer la commande →</button>
           </div>
         </div>
       )}
 
       {/* ── Checkout Drawer ── */}
       {checkoutOpen && (
-        <div
-          className={s.checkoutOverlay}
-          onClick={e => { if (e.target === e.currentTarget && !orderLoading) setCheckoutOpen(false); }}
-        >
+        <div className={s.checkoutOverlay} onClick={e => { if (e.target === e.currentTarget && !orderLoading) setCheckoutOpen(false); }}>
           <div className={s.checkoutDrawer}>
             {orderSuccess ? (
               <div className={s.successView}>
@@ -316,11 +390,10 @@ export default function ClientPage() {
               <>
                 <div className={s.checkoutHeader}>
                   <h2 className={s.checkoutTitle}>Récapitulatif</h2>
-                  <button className={s.checkoutClose} onClick={() => setCheckoutOpen(false)} disabled={orderLoading}>
-                    <CloseIcon />
-                  </button>
+                  <button className={s.checkoutClose} onClick={() => setCheckoutOpen(false)} disabled={orderLoading}><CloseIcon /></button>
                 </div>
 
+                {/* Items */}
                 <div className={s.checkoutItems}>
                   {cartItems.map(item => (
                     <div key={item.id} className={s.checkoutItem}>
@@ -330,24 +403,81 @@ export default function ClientPage() {
                     </div>
                   ))}
                 </div>
-
                 <div className={s.checkoutTotal}>
                   <span>Total</span>
                   <span className={s.checkoutTotalAmt}>${cartTotal}</span>
                 </div>
 
-                <div className={s.checkoutNotes}>
-                  <label className={s.checkoutLabel}>Notes / instructions de livraison</label>
-                  <textarea
-                    className={s.checkoutTextarea}
-                    placeholder="Adresse, créneau horaire, remarques particulières..."
-                    value={orderNotes}
-                    onChange={e => setOrderNotes(e.target.value)}
-                    rows={3}
-                  />
+                {/* Payment notice */}
+                <div className={s.paymentNotice}>
+                  <span className={s.paymentNoticeIcon}><CardIcon /></span>
+                  <div>
+                    <div className={s.paymentNoticeTitle}>Paiement à la réception</div>
+                    <div className={s.paymentNoticeSub}>Aucun paiement en ligne — tu règles à la livraison ou au retrait.</div>
+                  </div>
                 </div>
 
-                <button className={s.checkoutBtn} onClick={handleOrder} disabled={orderLoading}>
+                {/* Delivery type */}
+                <div className={s.deliverySection}>
+                  <span className={s.deliveryLabel}>Mode de retrait</span>
+                  <div className={s.deliveryOptions}>
+                    <button
+                      className={`${s.deliveryOption} ${deliveryType === 'pickup' ? s.deliveryOptionActive : ''}`}
+                      onClick={() => setDeliveryType('pickup')}
+                    >
+                      <StoreIcon />
+                      <div>
+                        <div className={s.deliveryOptionTitle}>Retrait en magasin</div>
+                        <div className={s.deliveryOptionSub}>Disponible dès que ta commande est prête</div>
+                      </div>
+                    </button>
+                    <button
+                      className={`${s.deliveryOption} ${deliveryType === 'delivery' ? s.deliveryOptionActive : ''} ${!settings.delivery_enabled ? s.deliveryOptionDisabled : ''}`}
+                      onClick={() => settings.delivery_enabled && setDeliveryType('delivery')}
+                      disabled={!settings.delivery_enabled}
+                    >
+                      <TruckIcon />
+                      <div>
+                        <div className={s.deliveryOptionTitle}>
+                          Livraison à domicile
+                          {!settings.delivery_enabled && <span className={s.soonBadge}>Bientôt disponible</span>}
+                        </div>
+                        <div className={s.deliveryOptionSub}>{settings.delivery_enabled ? 'Livraison directement chez toi' : 'Disponible à l\'ouverture'}</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Address field (delivery only) */}
+                {deliveryType === 'delivery' && (
+                  <div className={s.checkoutField}>
+                    <label className={s.checkoutLabel}>Adresse de livraison</label>
+                    <input
+                      type="text"
+                      className={s.checkoutInput}
+                      placeholder="Rue, numéro, ville..."
+                      value={address}
+                      onChange={e => setAddress(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
+
+                {/* Store closed warning (pickup) */}
+                {deliveryType === 'pickup' && !settings.store_open && (
+                  <div className={s.storeClosedWarn}>
+                    <span className={s.warnIcon}><WarnIcon /></span>
+                    <span>Le magasin est actuellement fermé. Ta commande sera préparée dès la réouverture.</span>
+                  </div>
+                )}
+
+                {/* Notes */}
+                <div className={s.checkoutField}>
+                  <label className={s.checkoutLabel}>Notes (facultatif)</label>
+                  <textarea className={s.checkoutTextarea} placeholder="Remarques particulières..." value={orderNotes} onChange={e => setOrderNotes(e.target.value)} rows={2} />
+                </div>
+
+                <button className={s.checkoutBtn} onClick={handleOrder} disabled={orderLoading || (deliveryType === 'delivery' && !address.trim())}>
                   {orderLoading ? 'Envoi en cours...' : `Confirmer la commande · $${cartTotal}`}
                 </button>
               </>

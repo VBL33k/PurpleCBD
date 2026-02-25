@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// ── Supabase Admin (service role — ne jamais exposer au frontend) ──
+// ── Supabase Admin ──
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -16,111 +16,68 @@ const supabase = createClient(
 app.use(express.json());
 app.use(cors({
   origin: process.env.FRONTEND_URL || '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// ── Health check ──
+// ── Helper: valide JWT admin Supabase ──
+async function requireAdmin(req, res) {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) { res.status(401).json({ error: 'Non autorisé.' }); return null; }
+  const { data: { user }, error } = await supabase.auth.getUser(auth.slice(7));
+  if (error || !user) { res.status(401).json({ error: 'Token invalide.' }); return null; }
+  return user;
+}
+
+// ── Health ──
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'Purple CBD API', version: '1.0.0' });
 });
 
-// ── Auth routes (placeholder) ──
-app.post('/api/auth/login', (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Identifiant et mot de passe requis.' });
-  res.status(501).json({ message: 'Authentification non encore implémentée.' });
-});
-
-app.post('/api/auth/register', (req, res) => {
-  const { username, fullName, password } = req.body;
-  if (!username || !fullName || !password) return res.status(400).json({ error: 'Tous les champs sont requis.' });
-  res.status(501).json({ message: 'Inscription non encore implémentée.' });
-});
-
-// ── Discord OAuth Manuel ──
+// ── Discord OAuth ──
 app.post('/api/auth/discord/callback', async (req, res) => {
   const { code, redirectUri } = req.body;
   if (!code || !redirectUri) return res.status(400).json({ error: 'code et redirectUri requis.' });
 
   const clientId = process.env.DISCORD_CLIENT_ID;
   const clientSecret = process.env.DISCORD_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
-    return res.status(500).json({ error: 'Discord OAuth non configuré côté serveur.' });
-  }
+  if (!clientId || !clientSecret) return res.status(500).json({ error: 'Discord OAuth non configuré.' });
 
   try {
     const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: redirectUri,
-      }),
+      body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, grant_type: 'authorization_code', code, redirect_uri: redirectUri }),
     });
-
-    if (!tokenRes.ok) {
-      console.error('Discord token error:', await tokenRes.text());
-      return res.status(400).json({ error: 'Échange de code Discord échoué.' });
-    }
-
+    if (!tokenRes.ok) { console.error('Discord token error:', await tokenRes.text()); return res.status(400).json({ error: 'Échange de code Discord échoué.' }); }
     const { access_token } = await tokenRes.json();
-
-    const userRes = await fetch('https://discord.com/api/users/@me', {
-      headers: { Authorization: `Bearer ${access_token}` },
-    });
-
+    const userRes = await fetch('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${access_token}` } });
     if (!userRes.ok) return res.status(400).json({ error: 'Impossible de récupérer les infos Discord.' });
-
     const discordUser = await userRes.json();
     const avatarUrl = discordUser.avatar
       ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
       : `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(discordUser.id) % 5n)}.png`;
-
-    res.json({
-      discordId: discordUser.id,
-      username: discordUser.global_name || discordUser.username,
-      avatarUrl,
-    });
+    res.json({ discordId: discordUser.id, username: discordUser.global_name || discordUser.username, avatarUrl });
   } catch (err) {
     console.error('Erreur Discord OAuth:', err);
     res.status(500).json({ error: 'Erreur serveur.' });
   }
 });
 
-// ── Enregistrement membre ──
-// Sauvegarde en DB + notifie le bot (nouveaux membres seulement)
+// ── Membres ──
 app.post('/api/members/register', async (req, res) => {
   const { discordId, username, avatarUrl, rpName } = req.body;
   if (!discordId || !rpName) return res.status(400).json({ error: 'discordId et rpName requis.' });
 
-  // Vérifie si le membre existe déjà
-  const { data: existing } = await supabase
-    .from('members')
-    .select('id')
-    .eq('discord_id', discordId)
-    .maybeSingle();
-
+  const { data: existing } = await supabase.from('members').select('id').eq('discord_id', discordId).maybeSingle();
   const isNew = !existing;
 
-  // Upsert (insert ou update si discord_id existe déjà)
-  const { error } = await supabase.from('members').upsert({
-    discord_id: discordId,
-    username,
-    avatar_url: avatarUrl,
-    rp_name: rpName,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'discord_id' });
+  const { error } = await supabase.from('members').upsert(
+    { discord_id: discordId, username, avatar_url: avatarUrl, rp_name: rpName, updated_at: new Date().toISOString() },
+    { onConflict: 'discord_id' }
+  );
+  if (error) { console.error('Supabase upsert error:', error); return res.status(500).json({ error: 'Erreur sauvegarde membre.' }); }
 
-  if (error) {
-    console.error('Supabase upsert error:', error);
-    return res.status(500).json({ error: 'Erreur sauvegarde membre.' });
-  }
-
-  // Notifie le bot Discord uniquement à la première inscription
   if (isNew) {
     try {
       await fetch(`${process.env.BOT_URL}/notify/new-user`, {
@@ -128,50 +85,98 @@ app.post('/api/members/register', async (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, discordId, avatarUrl, rpName }),
       });
-    } catch (err) {
-      console.error('Bot notification error:', err);
-    }
+    } catch (err) { console.error('Bot notification error:', err); }
   }
-
   res.json({ ok: true, isNew });
 });
 
-// ── Liste des membres (admin uniquement) ──
 app.get('/api/members', async (req, res) => {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Non autorisé.' });
-
-  // Valide le JWT Supabase de l'admin
-  const { data: { user }, error: authError } = await supabase.auth.getUser(auth.slice(7));
-  if (authError || !user) return res.status(401).json({ error: 'Token invalide.' });
-
-  const { data, error } = await supabase
-    .from('members')
-    .select('discord_id, username, avatar_url, rp_name, loyalty_points, joined_at')
-    .order('joined_at', { ascending: false });
-
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const { data, error } = await supabase.from('members').select('discord_id, username, avatar_url, rp_name, loyalty_points, joined_at').order('joined_at', { ascending: false });
   if (error) return res.status(500).json({ error: 'Erreur récupération membres.' });
-
   res.json({ members: data });
 });
 
-// ── Products ──
-app.get('/api/products', (_req, res) => {
-  res.json({
-    products: [
-      { id: 1, name: 'Purple Haze', strain: 'Sativa Dominante', badge: 'Signature' },
-      { id: 2, name: 'OG Kush',     strain: 'Indica Dominante', badge: 'VIP Select' },
-      { id: 3, name: 'Lemon Haze',  strain: 'Sativa Pure',      badge: 'Fresh Cut'  },
-      { id: 4, name: 'Dark Devil',  strain: 'Hybrid Exclusive', badge: 'Ultra Rare' },
-    ],
-  });
+// ── Settings ──
+app.get('/api/settings', async (_req, res) => {
+  const { data, error } = await supabase.from('settings').select('key, value');
+  if (error) return res.status(500).json({ error: 'Erreur lecture paramètres.' });
+  const settings = Object.fromEntries(data.map(r => [r.key, r.value === 'true']));
+  res.json(settings);
 });
 
-// ── 404 fallback ──
-app.use((_req, res) => {
-  res.status(404).json({ error: 'Route non trouvée.' });
+app.put('/api/settings', async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const { delivery_enabled, store_open } = req.body;
+  const updates = [];
+  if (delivery_enabled !== undefined) updates.push({ key: 'delivery_enabled', value: String(delivery_enabled) });
+  if (store_open !== undefined) updates.push({ key: 'store_open', value: String(store_open) });
+  if (!updates.length) return res.status(400).json({ error: 'Aucun paramètre fourni.' });
+  for (const u of updates) {
+    const { error } = await supabase.from('settings').upsert(u, { onConflict: 'key' });
+    if (error) return res.status(500).json({ error: 'Erreur mise à jour paramètre.' });
+  }
+  res.json({ ok: true });
 });
 
-app.listen(PORT, () => {
-  console.log(`Purple CBD API running on port ${PORT}`);
+// ── Commandes ──
+
+// Créer une commande (client)
+app.post('/api/orders', async (req, res) => {
+  const { discordId, username, rpName, avatarUrl, items, total, deliveryType, address, notes } = req.body;
+  if (!discordId || !items?.length) return res.status(400).json({ error: 'discordId et items requis.' });
+  if (deliveryType === 'delivery' && !address?.trim()) return res.status(400).json({ error: 'Adresse requise pour la livraison.' });
+
+  const { data, error } = await supabase.from('orders').insert({
+    discord_id: discordId,
+    username,
+    rp_name: rpName,
+    avatar_url: avatarUrl,
+    items,
+    total,
+    delivery_type: deliveryType || 'pickup',
+    address: address || null,
+    notes: notes || null,
+    status: 'pending',
+  }).select('id').single();
+
+  if (error) { console.error('Order insert error:', error); return res.status(500).json({ error: 'Erreur création commande.' }); }
+  res.json({ ok: true, orderId: data.id });
 });
+
+// Liste toutes les commandes (admin)
+app.get('/api/orders', async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: 'Erreur récupération commandes.' });
+  res.json({ orders: data });
+});
+
+// Commandes d'un client (par discord_id)
+app.get('/api/orders/me', async (req, res) => {
+  const { discord_id } = req.query;
+  if (!discord_id) return res.status(400).json({ error: 'discord_id requis.' });
+  const { data, error } = await supabase.from('orders').select('*').eq('discord_id', discord_id).order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: 'Erreur récupération commandes.' });
+  res.json({ orders: data });
+});
+
+// Mettre à jour le statut d'une commande (admin)
+app.patch('/api/orders/:id/status', async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const { status } = req.body;
+  const validStatuses = ['pending', 'confirmed', 'ready', 'delivered', 'cancelled'];
+  if (!validStatuses.includes(status)) return res.status(400).json({ error: 'Statut invalide.' });
+  const { error } = await supabase.from('orders').update({ status, updated_at: new Date().toISOString() }).eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: 'Erreur mise à jour statut.' });
+  res.json({ ok: true });
+});
+
+// ── 404 ──
+app.use((_req, res) => res.status(404).json({ error: 'Route non trouvée.' }));
+
+app.listen(PORT, () => console.log(`Purple CBD API running on port ${PORT}`));
