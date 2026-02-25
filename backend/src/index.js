@@ -58,6 +58,25 @@ app.get('/api/products', (_req, res) => {
   });
 });
 
+// ── Notification nouveau client Discord ──
+app.post('/api/notify/new-user', async (req, res) => {
+  const { username, discordId, avatarUrl } = req.body;
+  if (!discordId) return res.status(400).json({ error: 'discordId requis.' });
+
+  try {
+    const botRes = await fetch(`${process.env.BOT_URL}/notify/new-user`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, discordId, avatarUrl }),
+    });
+    const data = await botRes.json();
+    res.json(data);
+  } catch (err) {
+    console.error('Erreur appel bot:', err);
+    res.status(500).json({ error: 'Impossible de contacter le bot.' });
+  }
+});
+
 // ── 404 fallback ──
 app.use((_req, res) => {
   res.status(404).json({ error: 'Route non trouvée.' });
