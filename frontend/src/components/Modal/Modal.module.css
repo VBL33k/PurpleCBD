@@ -180,6 +180,37 @@
   transform: translateY(-1px);
 }
 
+.discordBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 20px;
+  background: #5865F2;
+  border: none;
+  border-radius: 9px;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.22s, box-shadow 0.22s, transform 0.2s;
+  margin-bottom: 8px;
+}
+
+.discordBtn:hover {
+  background: #4752c4;
+  box-shadow: 0 0 24px rgba(88, 101, 242, 0.45);
+  transform: translateY(-1px);
+}
+
+.discordIcon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
 .note {
   font-size: 11px;
   color: var(--text-muted);
