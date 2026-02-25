@@ -1400,11 +1400,6 @@
   opacity: 0.7;
 }
 
-.banIcon {
-  font-size: 52px;
-  margin-bottom: 18px;
-  line-height: 1;
-}
 
 .banTitle {
   font-family: var(--font-display);
