@@ -1439,6 +1439,90 @@
   border-color: rgba(239, 68, 68, 0.5);
 }
 
+/* ── Loyalty Shop ── */
+.loyaltyStatsBar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.loyaltyStat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.loyaltyStatNum {
+  font-size: 28px;
+  font-weight: 700;
+  color: #8b5cf6;
+  font-family: var(--font-display);
+  line-height: 1;
+}
+
+.loyaltyStatLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.loyaltyPrice {
+  font-size: 14px;
+  font-weight: 700;
+  color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 6px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+/* ── Loyalty earn notice (dans checkout régulier) ── */
+.loyaltyEarnNotice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(139, 92, 246, 0.07);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.loyaltyEarnNotice strong {
+  color: #8b5cf6;
+}
+
+/* ── Loyalty checkout balance ── */
+.loyaltyBalanceRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border);
+  margin-top: -2px;
+}
+
+.loyaltyInsufficient {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #f87171;
+  margin: 12px 0 4px;
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .sidebar { display: none; }

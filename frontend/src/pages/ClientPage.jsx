@@ -35,9 +35,9 @@ const PRODUCTS = [
 
 const STATUS_LABELS = {
   pending:   { label: 'En attente',  color: '#f59e0b' },
-  confirmed: { label: 'Confirmée',   color: '#8b5cf6' },
   ready:     { label: 'Prête',       color: '#06b6d4' },
   delivered: { label: 'Livrée',      color: '#10b981' },
+  picked_up: { label: 'Retirée',     color: '#10b981' },
   cancelled: { label: 'Annulée',     color: '#ef4444' },
 };
 
@@ -79,6 +79,16 @@ export default function ClientPage() {
   const chatOrderRef = useRef(null);
   const [banData, setBanData] = useState(null); // { message } when banned
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const [pendingPoints, setPendingPoints] = useState(0);
+  const [totalSpent, setTotalSpent]       = useState(0);
+
+  /* Loyalty shop */
+  const [loyaltyQty, setLoyaltyQty]                   = useState({});
+  const [loyaltyCheckoutOpen, setLoyaltyCheckoutOpen] = useState(false);
+  const [loyaltyOrderSuccess, setLoyaltyOrderSuccess] = useState(false);
+  const [loyaltyOrderLoading, setLoyaltyOrderLoading] = useState(false);
+  const [loyaltyDelivery, setLoyaltyDelivery]         = useState('pickup');
+  const [loyaltyAddress, setLoyaltyAddress]           = useState('');
 
   /* RP Popup */
   const [showRpPopup, setShowRpPopup] = useState(false);
@@ -106,8 +116,10 @@ export default function ClientPage() {
             updateStoredUser({ rpName: null });
             setShowRpPopup(true);
           }
-          // Sync points de fidélité depuis le serveur
+          // Sync stats fidélité depuis le serveur
           if (typeof d.loyaltyPoints === 'number') setLoyaltyPoints(d.loyaltyPoints);
+          if (typeof d.pendingPoints === 'number') setPendingPoints(d.pendingPoints);
+          if (typeof d.totalSpent    === 'number') setTotalSpent(d.totalSpent);
         })
         .catch(() => {});
     }
@@ -146,6 +158,57 @@ export default function ClientPage() {
 
   function changeQty(id, delta) {
     setQuantities(prev => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) + delta) }));
+  }
+
+  /* Loyalty cart */
+  const loyaltyCartItems = PRODUCTS.filter(p => (loyaltyQty[p.id] || 0) > 0).map(p => ({ ...p, qty: loyaltyQty[p.id] }));
+  const loyaltyCost      = loyaltyCartItems.reduce((sum, i) => sum + i.qty * 100, 0);
+  const loyaltyCartCount = loyaltyCartItems.reduce((sum, i) => sum + i.qty, 0);
+
+  function changeLoyaltyQty(id, delta) {
+    setLoyaltyQty(prev => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) + delta) }));
+  }
+
+  async function handleLoyaltyOrder() {
+    if (!loyaltyCartItems.length || loyaltyCost > loyaltyPoints) return;
+    if (loyaltyDelivery === 'delivery' && !loyaltyAddress.trim()) return;
+    setLoyaltyOrderLoading(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/orders/loyalty`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          discordId: user.discordId,
+          username: user.username,
+          rpName: user.rpName,
+          avatarUrl: user.avatarUrl,
+          items: loyaltyCartItems.map(i => ({ id: i.id, name: i.name, qty: i.qty })),
+          deliveryType: loyaltyDelivery,
+          address: loyaltyDelivery === 'delivery' ? loyaltyAddress : null,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        alert(d.error || "Erreur lors de la commande.");
+        return;
+      }
+      const data = await res.json();
+      setLoyaltyPoints(prev => prev - data.pointsCost);
+      setTotalSpent(prev => prev + data.pointsCost);
+      setLoyaltyOrderSuccess(true);
+      setTimeout(() => {
+        setLoyaltyQty({});
+        setLoyaltyCheckoutOpen(false);
+        setLoyaltyOrderSuccess(false);
+        setLoyaltyAddress('');
+        setLoyaltyDelivery('pickup');
+      }, 2800);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de l'envoi. Réessaie.");
+    } finally {
+      setLoyaltyOrderLoading(false);
+    }
   }
 
   /* Filtered products */
@@ -547,19 +610,86 @@ export default function ClientPage() {
 
         {/* ── Fidélité ── */}
         {activeTab === 'loyalty' && (
-          <div className={s.centeredView}>
-            <div className={s.loyaltyCard}>
-              <div className={s.loyaltyPoints}><span className={s.loyaltyNum}>{loyaltyPoints}</span><span className={s.loyaltyUnit}>pts</span></div>
-              <h2 className={s.loyaltyTitle}>Points de Fidélité</h2>
-              <p className={s.loyaltySub}>Gagne des points à chaque commande et débloque des récompenses exclusives réservées à nos membres.</p>
-              <span className={s.emptyBadge}>Bientôt</span>
+          <div className={s.shopView}>
+            <div className={s.shopHeader}>
+              <h1 className={s.shopTitle}>Boutique Fidélité</h1>
+              <p className={s.shopSub}>Échange tes points contre des produits — 100 pts par article</p>
+            </div>
+
+            {/* Stats bar */}
+            <div className={s.loyaltyStatsBar}>
+              <div className={s.loyaltyStat}>
+                <span className={s.loyaltyStatNum}>{loyaltyPoints}</span>
+                <span className={s.loyaltyStatLabel}>Points disponibles</span>
+              </div>
+              <div className={s.loyaltyStat}>
+                <span className={s.loyaltyStatNum} style={{ color: '#f59e0b' }}>{pendingPoints}</span>
+                <span className={s.loyaltyStatLabel}>En attente</span>
+              </div>
+              <div className={s.loyaltyStat}>
+                <span className={s.loyaltyStatNum} style={{ color: '#6b7280' }}>{totalSpent}</span>
+                <span className={s.loyaltyStatLabel}>Dépensés au total</span>
+              </div>
+            </div>
+
+            {/* Product list */}
+            <div className={s.productList}>
+              {PRODUCTS.map(p => {
+                const qty = loyaltyQty[p.id] || 0;
+                return (
+                  <div key={p.id} className={s.productRow}>
+                    <div className={s.productImg}><ImageIcon /></div>
+                    <div className={s.productInfo}>
+                      <div className={s.productNameRow}>
+                        <span className={s.productName}>{p.name}</span>
+                        <span className={s.productBadge}>{p.badge}</span>
+                      </div>
+                      <span className={s.productStrain}>{p.strain}</span>
+                      <div className={s.productTags}>
+                        {p.tags.map(t => <span key={t} className={s.productTag}>{t}</span>)}
+                      </div>
+                    </div>
+                    <div className={s.productActions}>
+                      <span className={s.loyaltyPrice}>100 pts</span>
+                      {qty === 0 ? (
+                        <button className={s.addBtn} onClick={() => changeLoyaltyQty(p.id, 1)}>Ajouter</button>
+                      ) : (
+                        <div className={s.qtyControl}>
+                          <button className={s.qtyBtn} onClick={() => changeLoyaltyQty(p.id, -1)}><MinusIcon /></button>
+                          <span className={s.qtyNum}>{qty}</span>
+                          <button className={s.qtyBtn} onClick={() => changeLoyaltyQty(p.id, 1)}><PlusIcon /></button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
       </main>
 
+      {/* ── Loyalty Cart Bar ── */}
+      {activeTab === 'loyalty' && loyaltyCartCount > 0 && !loyaltyCheckoutOpen && (
+        <div className={s.cartBar}>
+          <div className={s.cartBarLeft}>
+            <span className={s.cartBarIcon}><StarIcon /></span>
+            <span className={s.cartBarCount}>{loyaltyCartCount} article{loyaltyCartCount > 1 ? 's' : ''}</span>
+            <span className={s.cartBarItems}>{loyaltyCartItems.map(i => `${i.name} ×${i.qty}`).join(' · ')}</span>
+          </div>
+          <div className={s.cartBarRight}>
+            <span className={s.cartBarTotal} style={{ color: loyaltyCost > loyaltyPoints ? '#ef4444' : '#8b5cf6' }}>{loyaltyCost} pts</span>
+            <button
+              className={s.cartBarBtn}
+              onClick={() => setLoyaltyCheckoutOpen(true)}
+              disabled={loyaltyCost > loyaltyPoints}
+            >{loyaltyCost > loyaltyPoints ? `Solde insuffisant (manque ${loyaltyCost - loyaltyPoints} pts)` : 'Échanger les points →'}</button>
+          </div>
+        </div>
+      )}
+
       {/* ── Cart Bar ── */}
-      {cartCount > 0 && !checkoutOpen && (
+      {activeTab !== 'loyalty' && cartCount > 0 && !checkoutOpen && (
         <div className={s.cartBar}>
           <div className={s.cartBarLeft}>
             <span className={s.cartBarIcon}><CartIcon /></span>
@@ -603,6 +733,12 @@ export default function ClientPage() {
                 <div className={s.checkoutTotal}>
                   <span>Total</span>
                   <span className={s.checkoutTotalAmt}>${cartTotal}</span>
+                </div>
+
+                {/* Points à gagner */}
+                <div className={s.loyaltyEarnNotice}>
+                  <StarIcon />
+                  <span>Tu gagneras <strong>{cartTotal} pts</strong> crédités à la livraison / au retrait</span>
                 </div>
 
                 {/* Payment notice */}
@@ -682,6 +818,94 @@ export default function ClientPage() {
           </div>
         </div>
       )}
+      {/* ── Loyalty Checkout Drawer ── */}
+      {loyaltyCheckoutOpen && (
+        <div className={s.checkoutOverlay} onClick={e => { if (e.target === e.currentTarget && !loyaltyOrderLoading) setLoyaltyCheckoutOpen(false); }}>
+          <div className={s.checkoutDrawer}>
+            {loyaltyOrderSuccess ? (
+              <div className={s.successView}>
+                <div className={s.successIcon}><CheckIcon /></div>
+                <h2 className={s.successTitle}>Commande envoyée !</h2>
+                <p className={s.successSub}>{loyaltyCost} pts ont été déduits de ton solde.</p>
+              </div>
+            ) : (
+              <>
+                <div className={s.checkoutHeader}>
+                  <h2 className={s.checkoutTitle}>Récapitulatif fidélité</h2>
+                  <button className={s.checkoutClose} onClick={() => setLoyaltyCheckoutOpen(false)} disabled={loyaltyOrderLoading}><CloseIcon /></button>
+                </div>
+
+                <div className={s.checkoutItems}>
+                  {loyaltyCartItems.map(item => (
+                    <div key={item.id} className={s.checkoutItem}>
+                      <div className={s.checkoutItemName}>{item.name}</div>
+                      <div className={s.checkoutItemQty}>×{item.qty}</div>
+                      <div className={s.checkoutItemPrice}>{item.qty * 100} pts</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className={s.checkoutTotal}>
+                  <span>Total</span>
+                  <span className={s.checkoutTotalAmt} style={{ color: '#8b5cf6' }}>{loyaltyCost} pts</span>
+                </div>
+                <div className={s.loyaltyBalanceRow}>
+                  <span>Solde disponible</span>
+                  <span style={{ color: loyaltyCost > loyaltyPoints ? '#ef4444' : '#10b981', fontWeight: 600 }}>{loyaltyPoints} pts</span>
+                </div>
+                {loyaltyCost > loyaltyPoints && (
+                  <div className={s.loyaltyInsufficient}>
+                    Solde insuffisant — il te manque {loyaltyCost - loyaltyPoints} pts
+                  </div>
+                )}
+
+                <div className={s.deliverySection}>
+                  <span className={s.deliveryLabel}>Mode de retrait</span>
+                  <div className={s.deliveryOptions}>
+                    <button className={`${s.deliveryOption} ${loyaltyDelivery === 'pickup' ? s.deliveryOptionActive : ''}`} onClick={() => setLoyaltyDelivery('pickup')}>
+                      <StoreIcon />
+                      <div>
+                        <div className={s.deliveryOptionTitle}>Retrait en magasin</div>
+                        <div className={s.deliveryOptionSub}>Disponible dès que ta commande est prête</div>
+                      </div>
+                    </button>
+                    <button
+                      className={`${s.deliveryOption} ${loyaltyDelivery === 'delivery' ? s.deliveryOptionActive : ''} ${!settings.delivery_enabled ? s.deliveryOptionDisabled : ''}`}
+                      onClick={() => settings.delivery_enabled && setLoyaltyDelivery('delivery')}
+                      disabled={!settings.delivery_enabled}
+                    >
+                      <TruckIcon />
+                      <div>
+                        <div className={s.deliveryOptionTitle}>
+                          Livraison à domicile
+                          {!settings.delivery_enabled && <span className={s.soonBadge}>Bientôt</span>}
+                        </div>
+                        <div className={s.deliveryOptionSub}>{settings.delivery_enabled ? 'Livraison directement chez toi' : 'Disponible à l\'ouverture'}</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {loyaltyDelivery === 'delivery' && (
+                  <div className={s.checkoutField}>
+                    <label className={s.checkoutLabel}>Adresse de livraison</label>
+                    <input type="text" className={s.checkoutInput} placeholder="Rue, numéro, ville..." value={loyaltyAddress} onChange={e => setLoyaltyAddress(e.target.value)} required />
+                  </div>
+                )}
+
+                <button
+                  className={s.checkoutBtn}
+                  onClick={handleLoyaltyOrder}
+                  disabled={loyaltyOrderLoading || loyaltyCost > loyaltyPoints || (loyaltyDelivery === 'delivery' && !loyaltyAddress.trim())}
+                >
+                  {loyaltyOrderLoading ? 'Envoi en cours...' : `Confirmer · ${loyaltyCost} pts`}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
