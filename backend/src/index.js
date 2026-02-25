@@ -342,4 +342,25 @@ app.patch('/api/orders/:id/status', async (req, res) => {
 // ── 404 ──
 app.use((_req, res) => res.status(404).json({ error: 'Route non trouvée.' }));
 
-app.listen(PORT, () => console.log(`Purple CBD API running on port ${PORT}`));
+app.listen(PORT, async () => {
+  console.log(`Purple CBD API running on port ${PORT}`);
+  // ── Auto-check schema ──
+  const { error } = await supabase.from('members').select('banned').limit(0);
+  if (error?.code === '42703') {
+    console.error('\n╔════════════════════════════════════════════════════════════╗');
+    console.error('║  ⚠️  MIGRATION REQUISE — colonnes manquantes               ║');
+    console.error('╠════════════════════════════════════════════════════════════╣');
+    console.error('║  Ouvre l\'éditeur SQL Supabase et exécute :                ║');
+    console.error('║                                                             ║');
+    console.error('║  ALTER TABLE members                                        ║');
+    console.error('║    ADD COLUMN IF NOT EXISTS banned boolean                  ║');
+    console.error('║      DEFAULT false NOT NULL,                                ║');
+    console.error('║    ADD COLUMN IF NOT EXISTS ban_message text;               ║');
+    console.error('║                                                             ║');
+    console.error('║  URL: supabase.com/dashboard/project/                       ║');
+    console.error('║       xkcpourzczanfdracack/sql/new                          ║');
+    console.error('╚════════════════════════════════════════════════════════════╝\n');
+  } else {
+    console.log('✓ Schema OK — ban columns present');
+  }
+});
