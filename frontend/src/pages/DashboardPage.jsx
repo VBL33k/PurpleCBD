@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import s from './DashboardPage.module.css';
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://purplecbd.onrender.com';
+
 const LOGO = 'https://i.imgur.com/CbcU0Qp.png';
 
 function GridIcon() {
@@ -29,9 +31,35 @@ function LogoutIcon() {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+  const [membersError, setMembersError] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
+  }, []);
+
+  useEffect(() => {
+    async function fetchMembers() {
+      setMembersLoading(true);
+      setMembersError('');
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { setMembersError('Non authentifié.'); setMembersLoading(false); return; }
+        const res = await fetch(`${BACKEND_URL}/api/members`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        setMembers(json.members || []);
+      } catch (e) {
+        setMembersError('Impossible de charger les membres.');
+        console.error(e);
+      } finally {
+        setMembersLoading(false);
+      }
+    }
+    fetchMembers();
   }, []);
 
   async function handleLogout() {
@@ -85,16 +113,50 @@ export default function DashboardPage() {
         </header>
 
         <div className={s.content}>
-          <div className={s.comingSoon}>
-            <div className={s.comingSoonIcon}>
-              <GridIcon />
+          <section className={s.section}>
+            <div className={s.sectionHeader}>
+              <h2 className={s.sectionTitle}>Membres</h2>
+              <span className={s.badge}>{members.length} inscrits</span>
             </div>
-            <h2 className={s.comingSoonTitle}>Dashboard en construction</h2>
-            <p className={s.comingSoonText}>
-              Les modules de gestion (commandes, stock, clients, analytics) seront disponibles prochainement.
-            </p>
-            <span className={s.badge}>Accès Admin actif</span>
-          </div>
+
+            {membersLoading && <p className={s.stateMsg}>Chargement...</p>}
+            {membersError && <p className={s.stateError}>{membersError}</p>}
+
+            {!membersLoading && !membersError && (
+              <div className={s.tableWrapper}>
+                <table className={s.table}>
+                  <thead>
+                    <tr>
+                      <th>Membre</th>
+                      <th>Nom RP</th>
+                      <th>Points</th>
+                      <th>Inscrit le</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {members.length === 0 ? (
+                      <tr><td colSpan={4} className={s.emptyRow}>Aucun membre pour l'instant.</td></tr>
+                    ) : members.map(m => (
+                      <tr key={m.discord_id}>
+                        <td>
+                          <div className={s.memberCell}>
+                            {m.avatar_url
+                              ? <img src={m.avatar_url} alt="" className={s.memberAvatar} />
+                              : <div className={s.memberAvatarFallback}>{(m.username || '?')[0].toUpperCase()}</div>
+                            }
+                            <span className={s.memberName}>{m.username || '—'}</span>
+                          </div>
+                        </td>
+                        <td className={s.rpName}>{m.rp_name || '—'}</td>
+                        <td className={s.points}>{m.loyalty_points ?? 0}</td>
+                        <td className={s.date}>{m.joined_at ? new Date(m.joined_at).toLocaleDateString('fr-FR') : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
         </div>
       </main>
     </div>

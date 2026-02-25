@@ -30,20 +30,20 @@ export default function ClientPage() {
     const trimmed = rpName.trim();
     updateStoredUser({ rpName: trimmed });
 
-    // Notifier le bot
+    // Enregistrement en base + notification bot si nouveau membre
     try {
-      await fetch(`${BACKEND_URL}/api/notify/new-user`, {
+      await fetch(`${BACKEND_URL}/api/members/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: user.username || 'Inconnu',
           discordId: user.discordId,
+          username: user.username || 'Inconnu',
           avatarUrl: user.avatarUrl || null,
           rpName: trimmed,
         }),
       });
     } catch (e) {
-      console.error('Notification échouée:', e);
+      console.error('Enregistrement membre échoué:', e);
     }
 
     setUser(getStoredUser());
