@@ -26,7 +26,7 @@ const server = http.createServer((req, res) => {
   req.on('data', chunk => body += chunk);
   req.on('end', async () => {
     try {
-      const { username, discordId, avatarUrl } = JSON.parse(body);
+      const { username, discordId, avatarUrl, rpName } = JSON.parse(body);
       const channel = await client.channels.fetch(CHANNEL_ID);
 
       const embed = new EmbedBuilder()
@@ -36,6 +36,7 @@ const server = http.createServer((req, res) => {
         .addFields(
           { name: 'Pseudo Discord', value: username || 'Inconnu', inline: true },
           { name: 'ID Discord', value: discordId || 'Inconnu', inline: true },
+          { name: 'Nom RP', value: rpName || 'Non renseigné', inline: false },
         )
         .setTimestamp()
         .setFooter({ text: 'Purple CBD — Espace Client' });

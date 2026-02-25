@@ -14,6 +14,7 @@ import InternalModal from './components/Modal/InternalModal';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
+import ClientPage from './pages/ClientPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import s from './App.module.css';
@@ -66,6 +67,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Vitrine />} />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <Route path="/client" element={<ClientPage />} />
       <Route path="/dashboard/login" element={<LoginPage />} />
       <Route
         path="/dashboard"
