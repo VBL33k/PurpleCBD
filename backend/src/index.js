@@ -443,6 +443,19 @@ app.patch('/api/orders/:id/status', async (req, res) => {
       }
     }
 
+    // Commande régulière remise en attente depuis complétée → retirer les points (peut être négatif)
+    if (order.order_type === 'regular' && wasCompleted && !completedStatuses.includes(status)) {
+      const pts = order.points_earned || 0;
+      if (pts > 0) {
+        const { data: member } = await supabase.from('members').select('loyalty_points').eq('discord_id', order.discord_id).maybeSingle();
+        if (member) {
+          await supabase.from('members')
+            .update({ loyalty_points: (member.loyalty_points ?? 0) - pts, updated_at: new Date().toISOString() })
+            .eq('discord_id', order.discord_id);
+        }
+      }
+    }
+
     // Commande fidélité annulée → rembourser les points
     if (order.order_type === 'loyalty' && status === 'cancelled' && order.status !== 'cancelled') {
       const pts = order.points_cost || 0;
