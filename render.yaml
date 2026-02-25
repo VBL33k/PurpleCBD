@@ -17,7 +17,7 @@ services:
 
   # ── Backend (Node.js API) ───────────────────────────────────
   - type: web
-    name: purplecbd
+    name: purple-cbd-api
     runtime: node
     rootDir: backend
     buildCommand: npm install
