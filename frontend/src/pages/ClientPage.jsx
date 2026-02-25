@@ -78,6 +78,7 @@ export default function ClientPage() {
   const [unreadCounts, setUnreadCounts] = useState({}); // { orderId: count }
   const chatOrderRef = useRef(null);
   const [banData, setBanData] = useState(null); // { message } when banned
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
 
   /* RP Popup */
   const [showRpPopup, setShowRpPopup] = useState(false);
@@ -105,6 +106,8 @@ export default function ClientPage() {
             updateStoredUser({ rpName: null });
             setShowRpPopup(true);
           }
+          // Sync points de fidélité depuis le serveur
+          if (typeof d.loyaltyPoints === 'number') setLoyaltyPoints(d.loyaltyPoints);
         })
         .catch(() => {});
     }
@@ -546,7 +549,7 @@ export default function ClientPage() {
         {activeTab === 'loyalty' && (
           <div className={s.centeredView}>
             <div className={s.loyaltyCard}>
-              <div className={s.loyaltyPoints}><span className={s.loyaltyNum}>0</span><span className={s.loyaltyUnit}>pts</span></div>
+              <div className={s.loyaltyPoints}><span className={s.loyaltyNum}>{loyaltyPoints}</span><span className={s.loyaltyUnit}>pts</span></div>
               <h2 className={s.loyaltyTitle}>Points de Fidélité</h2>
               <p className={s.loyaltySub}>Gagne des points à chaque commande et débloque des récompenses exclusives réservées à nos membres.</p>
               <span className={s.emptyBadge}>Bientôt</span>

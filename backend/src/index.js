@@ -102,7 +102,7 @@ app.post('/api/members/register', async (req, res) => {
   // ── Vérification ban ──
   const { data: existing } = await supabase
     .from('members')
-    .select('id, banned, ban_message')
+    .select('id, banned, ban_message, rp_name')
     .eq('discord_id', discordId)
     .maybeSingle();
 
@@ -113,7 +113,8 @@ app.post('/api/members/register', async (req, res) => {
     });
   }
 
-  const isNew = !existing;
+  // "Nouveau" si jamais inscrit, ou si rp_name a été effacé (reset)
+  const isNew = !existing || !existing.rp_name;
 
   const { error } = await supabase.from('members').upsert(
     { discord_id: discordId, username, avatar_url: avatarUrl, rp_name: rpName, updated_at: new Date().toISOString() },
@@ -144,13 +145,13 @@ app.get('/api/members/check', async (req, res) => {
   if (!discord_id) return res.status(400).json({ error: 'discord_id requis.' });
   const { data } = await supabase
     .from('members')
-    .select('banned, ban_message, rp_name')
+    .select('banned, ban_message, rp_name, loyalty_points')
     .eq('discord_id', discord_id)
     .maybeSingle();
   if (data?.banned) {
     return res.json({ banned: true, message: data.ban_message || 'Votre compte a été banni.' });
   }
-  res.json({ banned: false, rpName: data?.rp_name || null });
+  res.json({ banned: false, rpName: data?.rp_name || null, loyaltyPoints: data?.loyalty_points ?? 0 });
 });
 
 app.get('/api/members', async (req, res) => {
