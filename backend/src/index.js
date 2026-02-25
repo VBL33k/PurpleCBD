@@ -14,8 +14,17 @@ const supabase = createClient(
 
 // ── Middleware ──
 app.use(express.json());
+const ALLOWED_ORIGINS = new Set([
+  process.env.FRONTEND_URL,
+  'https://purplecbd.store',
+  'https://www.purplecbd.store',
+].filter(Boolean));
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+  origin: (origin, callback) => {
+    if (!origin || ALLOWED_ORIGINS.has(origin)) callback(null, true);
+    else callback(new Error('CORS: Not allowed'));
+  },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
@@ -90,7 +99,20 @@ app.post('/api/members/register', async (req, res) => {
   const { discordId, username, avatarUrl, rpName } = req.body;
   if (!discordId || !rpName) return res.status(400).json({ error: 'discordId et rpName requis.' });
 
-  const { data: existing } = await supabase.from('members').select('id').eq('discord_id', discordId).maybeSingle();
+  // ── Vérification ban ──
+  const { data: existing } = await supabase
+    .from('members')
+    .select('id, banned, ban_message')
+    .eq('discord_id', discordId)
+    .maybeSingle();
+
+  if (existing?.banned) {
+    return res.status(403).json({
+      error: 'banned',
+      message: existing.ban_message || 'Votre compte a été banni. Contactez l\'administration.',
+    });
+  }
+
   const isNew = !existing;
 
   const { error } = await supabase.from('members').upsert(
@@ -99,24 +121,90 @@ app.post('/api/members/register', async (req, res) => {
   );
   if (error) { console.error('Supabase upsert error:', error); return res.status(500).json({ error: 'Erreur sauvegarde membre.' }); }
 
+  // ── Notification Discord nouveau membre (direct via bot token) ──
   if (isNew) {
-    try {
-      await fetch(`${process.env.BOT_URL}/notify/new-user`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, discordId, avatarUrl, rpName }),
-      });
-    } catch (err) { console.error('Bot notification error:', err); }
+    sendDiscordEmbed({
+      title: '👤 Nouveau membre inscrit',
+      color: DISCORD_COLOR_PURPLE,
+      thumbnail: avatarUrl ? { url: avatarUrl } : undefined,
+      fields: [
+        { name: 'Pseudo Discord', value: username || 'Inconnu', inline: true },
+        { name: 'Nom RP',         value: rpName,                inline: true },
+        { name: 'ID Discord',     value: `\`${discordId}\``,    inline: false },
+      ],
+    }).catch(() => {});
   }
+
   res.json({ ok: true, isNew });
+});
+
+// Vérification ban (utilisée côté client au chargement)
+app.get('/api/members/check', async (req, res) => {
+  const { discord_id } = req.query;
+  if (!discord_id) return res.status(400).json({ error: 'discord_id requis.' });
+  const { data } = await supabase
+    .from('members')
+    .select('banned, ban_message')
+    .eq('discord_id', discord_id)
+    .maybeSingle();
+  if (data?.banned) {
+    return res.json({ banned: true, message: data.ban_message || 'Votre compte a été banni.' });
+  }
+  res.json({ banned: false });
 });
 
 app.get('/api/members', async (req, res) => {
   const user = await requireAdmin(req, res);
   if (!user) return;
-  const { data, error } = await supabase.from('members').select('discord_id, username, avatar_url, rp_name, loyalty_points, joined_at').order('joined_at', { ascending: false });
+  const { data, error } = await supabase
+    .from('members')
+    .select('discord_id, username, avatar_url, rp_name, loyalty_points, joined_at, banned, ban_message')
+    .order('joined_at', { ascending: false });
   if (error) return res.status(500).json({ error: 'Erreur récupération membres.' });
   res.json({ members: data });
+});
+
+// Reset compte membre (pts + commandes)
+app.post('/api/members/:discordId/reset', async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const { discordId } = req.params;
+  await supabase.from('orders').delete().eq('discord_id', discordId);
+  const { error } = await supabase
+    .from('members')
+    .update({ loyalty_points: 0, updated_at: new Date().toISOString() })
+    .eq('discord_id', discordId);
+  if (error) return res.status(500).json({ error: 'Erreur reset.' });
+  res.json({ ok: true });
+});
+
+// Ban / unban membre
+app.post('/api/members/:discordId/ban', async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const { discordId } = req.params;
+  const { banned, banMessage } = req.body;
+  const { error } = await supabase
+    .from('members')
+    .update({ banned: banned ?? true, ban_message: banMessage || null, updated_at: new Date().toISOString() })
+    .eq('discord_id', discordId);
+  if (error) return res.status(500).json({ error: 'Erreur ban.' });
+  res.json({ ok: true });
+});
+
+// Modifier points de fidélité
+app.patch('/api/members/:discordId/points', async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const { discordId } = req.params;
+  const { points } = req.body;
+  if (typeof points !== 'number' || points < 0) return res.status(400).json({ error: 'points invalide.' });
+  const { error } = await supabase
+    .from('members')
+    .update({ loyalty_points: points, updated_at: new Date().toISOString() })
+    .eq('discord_id', discordId);
+  if (error) return res.status(500).json({ error: 'Erreur mise à jour points.' });
+  res.json({ ok: true });
 });
 
 // ── Settings ──
@@ -228,6 +316,15 @@ app.get('/api/orders/me', async (req, res) => {
   const { data, error } = await supabase.from('orders').select('*').eq('discord_id', discord_id).order('created_at', { ascending: false });
   if (error) return res.status(500).json({ error: 'Erreur récupération commandes.' });
   res.json({ orders: data });
+});
+
+// Supprimer une commande
+app.delete('/api/orders/:id', async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const { error } = await supabase.from('orders').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: 'Erreur suppression commande.' });
+  res.json({ ok: true });
 });
 
 // Mettre à jour le statut d'une commande (admin)

@@ -1381,6 +1381,69 @@
 
 .popupBtn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
+/* ── Ban Screen ── */
+.banScreen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--v950);
+  text-align: center;
+  padding: 40px;
+}
+
+.banLogo {
+  width: 56px;
+  margin-bottom: 28px;
+  filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.35)) grayscale(60%);
+  opacity: 0.7;
+}
+
+.banIcon {
+  font-size: 52px;
+  margin-bottom: 18px;
+  line-height: 1;
+}
+
+.banTitle {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: #fca5a5;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+}
+
+.banMessage {
+  font-size: 14px;
+  color: var(--text-secondary);
+  max-width: 380px;
+  line-height: 1.65;
+  margin-bottom: 32px;
+  padding: 16px 20px;
+  background: rgba(239, 68, 68, 0.07);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 12px;
+}
+
+.banLogoutBtn {
+  padding: 10px 24px;
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 8px;
+  color: #fca5a5;
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.banLogoutBtn:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .sidebar { display: none; }

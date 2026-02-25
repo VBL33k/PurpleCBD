@@ -98,6 +98,15 @@ function StoreIcon() {
   );
 }
 
+function TrashIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+      <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+    </svg>
+  );
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -123,6 +132,13 @@ export default function DashboardPage() {
   const [chatOrder, setChatOrder] = useState(null); // { id, ref }
   const [unreadCounts, setUnreadCounts] = useState({}); // { orderId: count }
   const chatOrderRef = useRef(null);
+
+  /* Member actions */
+  const [actionLoading, setActionLoading] = useState({});
+  const [editPoints, setEditPoints]       = useState(null);  // { discordId, value }
+  const [banModal, setBanModal]           = useState(null);  // { discordId, username }
+  const [banMessage, setBanMessage]       = useState('');
+  const [confirmModal, setConfirmModal]   = useState(null); // { label, onConfirm }
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -248,6 +264,81 @@ export default function DashboardPage() {
   function handleTabChange(tab) {
     setActiveTab(tab);
     if (tab === 'orders') fetchOrders();
+  }
+
+  /* Admin token helper */
+  async function getToken() {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token;
+  }
+
+  /* Reset member account (points + orders) */
+  async function resetMember(discordId) {
+    setActionLoading(prev => ({ ...prev, [discordId]: true }));
+    try {
+      const token = await getToken();
+      await fetch(`${BACKEND_URL}/api/members/${discordId}/reset`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMembers(prev => prev.map(m =>
+        m.discord_id === discordId ? { ...m, loyalty_points: 0 } : m
+      ));
+    } catch (e) { console.error(e); }
+    finally { setActionLoading(prev => ({ ...prev, [discordId]: false })); }
+  }
+
+  /* Ban / unban member */
+  async function saveBan(discordId, banned, message) {
+    setActionLoading(prev => ({ ...prev, [discordId]: true }));
+    try {
+      const token = await getToken();
+      await fetch(`${BACKEND_URL}/api/members/${discordId}/ban`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ banned, banMessage: message || null }),
+      });
+      setMembers(prev => prev.map(m =>
+        m.discord_id === discordId ? { ...m, banned, ban_message: message || null } : m
+      ));
+    } catch (e) { console.error(e); }
+    finally {
+      setActionLoading(prev => ({ ...prev, [discordId]: false }));
+      setBanModal(null);
+      setBanMessage('');
+    }
+  }
+
+  /* Edit loyalty points */
+  async function savePoints(discordId, points) {
+    setActionLoading(prev => ({ ...prev, [discordId]: true }));
+    try {
+      const token = await getToken();
+      await fetch(`${BACKEND_URL}/api/members/${discordId}/points`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ points }),
+      });
+      setMembers(prev => prev.map(m =>
+        m.discord_id === discordId ? { ...m, loyalty_points: points } : m
+      ));
+    } catch (e) { console.error(e); }
+    finally {
+      setActionLoading(prev => ({ ...prev, [discordId]: false }));
+      setEditPoints(null);
+    }
+  }
+
+  /* Delete order */
+  async function deleteOrder(orderId) {
+    try {
+      const token = await getToken();
+      await fetch(`${BACKEND_URL}/api/orders/${orderId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setOrders(prev => prev.filter(o => o.id !== orderId));
+    } catch (e) { console.error(e); }
   }
 
   /* Update order status */
@@ -454,13 +545,14 @@ export default function DashboardPage() {
                         <th>Nom RP</th>
                         <th>Points</th>
                         <th>Inscrit le</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {members.length === 0 ? (
-                        <tr><td colSpan={4} className={s.emptyRow}>Aucun membre pour l'instant.</td></tr>
+                        <tr><td colSpan={5} className={s.emptyRow}>Aucun membre pour l'instant.</td></tr>
                       ) : members.map(m => (
-                        <tr key={m.discord_id}>
+                        <tr key={m.discord_id} className={m.banned ? s.rowBanned : ''}>
                           <td>
                             <div className={s.memberCell}>
                               {m.avatar_url
@@ -468,11 +560,53 @@ export default function DashboardPage() {
                                 : <div className={s.memberAvatarFallback}>{(m.username || '?')[0].toUpperCase()}</div>
                               }
                               <span className={s.memberName}>{m.username || '—'}</span>
+                              {m.banned && <span className={s.bannedBadge}>Banni</span>}
                             </div>
                           </td>
                           <td className={s.rpName}>{m.rp_name || '—'}</td>
-                          <td className={s.points}>{m.loyalty_points ?? 0}</td>
+                          <td>
+                            {editPoints?.discordId === m.discord_id ? (
+                              <div className={s.pointsEditRow}>
+                                <input
+                                  type="number"
+                                  className={s.pointsInput}
+                                  value={editPoints.value}
+                                  onChange={e => setEditPoints(p => ({ ...p, value: Number(e.target.value) }))}
+                                  min={0}
+                                  autoFocus
+                                />
+                                <button className={s.pointsSave} onClick={() => savePoints(m.discord_id, editPoints.value)} disabled={actionLoading[m.discord_id]}>✓</button>
+                                <button className={s.pointsCancel} onClick={() => setEditPoints(null)}>✕</button>
+                              </div>
+                            ) : (
+                              <button className={s.pointsBtn} onClick={() => setEditPoints({ discordId: m.discord_id, value: m.loyalty_points ?? 0 })}>
+                                {m.loyalty_points ?? 0}
+                              </button>
+                            )}
+                          </td>
                           <td className={s.date}>{m.joined_at ? new Date(m.joined_at).toLocaleDateString('fr-FR') : '—'}</td>
+                          <td>
+                            <div className={s.memberActions}>
+                              <button
+                                className={s.actionBtnSmall}
+                                onClick={() => setConfirmModal({ label: `Réinitialiser ${m.username || m.rp_name} ?`, onConfirm: () => resetMember(m.discord_id) })}
+                                disabled={actionLoading[m.discord_id]}
+                              >Reset</button>
+                              {m.banned ? (
+                                <button
+                                  className={`${s.actionBtnSmall} ${s.actionBtnGreen}`}
+                                  onClick={() => saveBan(m.discord_id, false, null)}
+                                  disabled={actionLoading[m.discord_id]}
+                                >Débannir</button>
+                              ) : (
+                                <button
+                                  className={`${s.actionBtnSmall} ${s.actionBtnRed}`}
+                                  onClick={() => { setBanModal({ discordId: m.discord_id, username: m.username }); setBanMessage(''); }}
+                                  disabled={actionLoading[m.discord_id]}
+                                >Bannir</button>
+                              )}
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -551,6 +685,11 @@ export default function DashboardPage() {
                           <div className={s.orderActionsLeft}>
                             <span className={s.orderTotal}>${order.total}</span>
                             <button
+                              className={s.deleteOrderBtn}
+                              onClick={() => setConfirmModal({ label: `Supprimer la commande #${order.id.slice(-6).toUpperCase()} ?`, onConfirm: () => deleteOrder(order.id) })}
+                              title="Supprimer la commande"
+                            ><TrashIcon /></button>
+                            <button
                               className={`${s.chatBtn} ${unreadCounts[order.id] ? s.chatBtnUnread : ''}`}
                               onClick={() => openChat(order.id)}
                             >
@@ -608,6 +747,41 @@ export default function DashboardPage() {
         )}
 
       </main>
+
+      {/* ── Confirm Modal ── */}
+      {confirmModal && (
+        <div className={s.modalOverlay} onClick={e => { if (e.target === e.currentTarget) setConfirmModal(null); }}>
+          <div className={s.modal}>
+            <h3 className={s.modalTitle}>{confirmModal.label}</h3>
+            <div className={s.modalBtns}>
+              <button className={s.modalCancelBtn} onClick={() => setConfirmModal(null)}>Annuler</button>
+              <button className={s.modalDangerBtn} onClick={() => { confirmModal.onConfirm(); setConfirmModal(null); }}>Confirmer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Ban Modal ── */}
+      {banModal && (
+        <div className={s.modalOverlay} onClick={e => { if (e.target === e.currentTarget) { setBanModal(null); setBanMessage(''); } }}>
+          <div className={s.modal}>
+            <h3 className={s.modalTitle}>Bannir {banModal.username}</h3>
+            <p className={s.modalSub}>Le membre verra ce message lors de la connexion.</p>
+            <textarea
+              className={s.banTextarea}
+              placeholder="Raison du ban (optionnel)..."
+              value={banMessage}
+              onChange={e => setBanMessage(e.target.value)}
+              rows={3}
+            />
+            <div className={s.modalBtns}>
+              <button className={s.modalCancelBtn} onClick={() => { setBanModal(null); setBanMessage(''); }}>Annuler</button>
+              <button className={s.modalDangerBtn} onClick={() => saveBan(banModal.discordId, true, banMessage)}>Bannir</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

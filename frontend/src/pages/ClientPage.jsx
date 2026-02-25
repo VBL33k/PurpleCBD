@@ -77,6 +77,7 @@ export default function ClientPage() {
   const [chatOrder, setChatOrder] = useState(null); // { id } for chat modal
   const [unreadCounts, setUnreadCounts] = useState({}); // { orderId: count }
   const chatOrderRef = useRef(null);
+  const [banData, setBanData] = useState(null); // { message } when banned
 
   /* RP Popup */
   const [showRpPopup, setShowRpPopup] = useState(false);
@@ -93,6 +94,13 @@ export default function ClientPage() {
       .then(r => r.json())
       .then(d => setSettings(d))
       .catch(() => {});
+    // Ban check on mount
+    if (stored.discordId) {
+      fetch(`${BACKEND_URL}/api/members/check?discord_id=${stored.discordId}`)
+        .then(r => r.json())
+        .then(d => { if (d.banned) setBanData({ message: d.message }); })
+        .catch(() => {});
+    }
   }, [navigate]);
 
   async function handleRpSubmit(e) {
@@ -102,11 +110,17 @@ export default function ClientPage() {
     const trimmed = rpName.trim();
     updateStoredUser({ rpName: trimmed });
     try {
-      await fetch(`${BACKEND_URL}/api/members/register`, {
+      const res = await fetch(`${BACKEND_URL}/api/members/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ discordId: user.discordId, username: user.username || 'Inconnu', avatarUrl: user.avatarUrl || null, rpName: trimmed }),
       });
+      if (res.status === 403) {
+        const data = await res.json();
+        setBanData({ message: data.message });
+        setRpLoading(false);
+        return;
+      }
     } catch (err) { console.error(err); }
     setUser(getStoredUser());
     setShowRpPopup(false);
@@ -250,6 +264,19 @@ export default function ClientPage() {
   }
 
   if (!user) return null;
+
+  if (banData) {
+    return (
+      <div className={s.banScreen}>
+        <img src={LOGO} alt="Purple CBD" className={s.banLogo} />
+        <div className={s.banIcon}>🚫</div>
+        <h1 className={s.banTitle}>Compte suspendu</h1>
+        <p className={s.banMessage}>{banData.message || "Votre compte a été banni. Contactez l'administration."}</p>
+        <button className={s.banLogoutBtn} onClick={handleLogout}>Se déconnecter</button>
+      </div>
+    );
+  }
+
   const displayName = user.rpName || user.username || 'Client';
   const avatar = user.avatarUrl;
 
