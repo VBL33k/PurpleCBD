@@ -1306,6 +1306,9 @@
   gap: 5px;
   font-size: 11px;
   font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: rgba(139, 92, 246, 0.1);
   color: #a78bfa;
   text-decoration: none;
   background: rgba(139, 92, 246, 0.1);
@@ -1353,6 +1356,69 @@
   font-size: 12px;
   color: rgba(255, 255, 255, 0.2);
   margin: 0;
+}
+
+/* ── Receipt Lightbox ── */
+.receiptLightboxOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+  backdrop-filter: blur(4px);
+}
+
+.receiptLightboxBox {
+  position: relative;
+  background: #f5f4f1;
+  border-radius: 16px;
+  padding: 16px;
+  max-width: 460px;
+  width: 100%;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.receiptLightboxTitle {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #7c3aed;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.receiptLightboxClose {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.receiptLightboxClose:hover { background: rgba(0, 0, 0, 0.75); }
+
+.receiptLightboxImg {
+  width: 100%;
+  border-radius: 8px;
+  display: block;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
 /* ── Responsive ── */

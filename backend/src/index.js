@@ -13,7 +13,7 @@ const supabase = createClient(
 );
 
 // ── Middleware ──
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 const ALLOWED_ORIGINS = new Set([
   process.env.FRONTEND_URL,
   'https://purplecbd.store',

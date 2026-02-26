@@ -11,24 +11,24 @@ const PRODUCTS = [
   { id: 4, name: 'Dark Devil',   strain: 'Hybrid Exclusive',   price: 150 },
 ];
 
-/* ── Receipt PNG generator ── */
+/* ── Helpers ── */
 async function loadImg(src) {
   return new Promise(resolve => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     let done = false;
     const fin = r => { if (!done) { done = true; resolve(r); } };
-    img.onload = () => fin(img);
+    img.onload  = () => fin(img);
     img.onerror = () => fin(null);
     setTimeout(() => fin(null), 3000);
     img.src = src;
   });
 }
 
-function dash(ctx, x1, y, x2) {
+function dashedLine(ctx, x1, y, x2) {
   ctx.save();
-  ctx.setLineDash([5, 5]);
-  ctx.strokeStyle = '#ddd';
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = '#e0dbd8';
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(x1, y);
@@ -37,140 +37,165 @@ function dash(ctx, x1, y, x2) {
   ctx.restore();
 }
 
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+/* ── Receipt PNG generator — 2× HiDPI ── */
 async function generateReceiptBlob({ items, total, clientName, vendorName, createdAt, pointsEarned, invoiceNumber }) {
-  const W = 460;
-  const PAD = 38;
-  const IH = 30;
-  const n = items.length;
+  const SCALE     = 2;    // HiDPI — netteté maximale
+  const W         = 400;  // largeur logique
+  const PAD       = 32;
+  const LH        = 28;   // hauteur par ligne article
   const hasPoints = pointsEarned > 0;
-  const H = 390 + n * IH + (hasPoints ? 30 : 0);
+
+  // Calcul hauteur dynamique
+  const H = 30 + 20 + 64 + 22 + 14 + 14   // top stripe + logo + title + sep
+          + 18 + 18 + 18 + 14              // date + client + vendor + sep
+          + 14 + 8                          // col headers + sep
+          + items.length * LH + 16          // items
+          + 16 + 36                          // sep + total
+          + (hasPoints ? 30 : 0)            // points
+          + 14 + 22 + 18 + 16              // sep + invoice + thanks + bottom;
 
   const canvas = document.createElement('canvas');
-  canvas.width = W;
-  canvas.height = H;
+  canvas.width  = W * SCALE;
+  canvas.height = H * SCALE;
   const ctx = canvas.getContext('2d');
+  ctx.scale(SCALE, SCALE);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
 
-  // Paper background
-  ctx.fillStyle = '#f7f6f3';
+  /* ── Paper background ── */
+  ctx.fillStyle = '#f5f4f1';
   ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = '#ffffff';
-  ctx.fillRect(12, 0, W - 24, H);
+  ctx.fillRect(8, 0, W - 16, H);
 
   let y = 0;
 
-  // Top stripe
-  ctx.fillStyle = '#6d28d9';
-  ctx.fillRect(12, 0, W - 24, 7);
-  y = 7 + 16;
+  /* ── Top purple stripe ── */
+  ctx.fillStyle = '#7c3aed';
+  ctx.fillRect(8, 0, W - 16, 8);
+  y = 8 + 20;
 
-  // Logo
+  /* ── Logo ── */
   const logo = await loadImg(LOGO_URL);
+  const LS = 56;
   if (logo) {
-    const LS = 58;
     ctx.drawImage(logo, (W - LS) / 2, y, LS, LS);
     y += LS + 10;
   } else {
-    const cx = W / 2;
-    const cy = y + 27;
-    ctx.beginPath();
+    // Fallback diamond
+    const cx = W / 2, cy = y + 28;
     ctx.fillStyle = '#7c3aed';
-    ctx.moveTo(cx, cy - 24); ctx.lineTo(cx + 18, cy);
-    ctx.lineTo(cx, cy + 24); ctx.lineTo(cx - 18, cy);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 26); ctx.lineTo(cx + 22, cy);
+    ctx.lineTo(cx, cy + 26); ctx.lineTo(cx - 22, cy);
     ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 20px serif';
+    ctx.font      = 'bold 24px sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('P', cx, cy);
     ctx.textBaseline = 'alphabetic';
-    y += 62;
+    y += 66;
   }
 
-  // Company name
-  ctx.fillStyle = '#1a0f2e';
-  ctx.font = 'bold 21px "Courier New", monospace';
+  /* ── Company name ── */
   ctx.textAlign = 'center';
-  ctx.fillText('PURPLE CBD', W / 2, y); y += 6;
+  ctx.fillStyle = '#1a0f2e';
+  ctx.font      = 'bold 17px "Courier New", Courier, monospace';
+  ctx.fillText('PURPLE CBD', W / 2, y); y += 18;
 
-  ctx.fillStyle = '#8b5cf6';
-  ctx.font = '10px "Courier New", monospace';
-  ctx.fillText('• TICKET DE CAISSE •', W / 2, y + 14); y += 28;
+  ctx.fillStyle = '#9333ea';
+  ctx.font      = '9.5px "Courier New", Courier, monospace';
+  ctx.fillText('▪  TICKET DE CAISSE  ▪', W / 2, y); y += 18;
 
-  dash(ctx, PAD, y, W - PAD); y += 14;
+  dashedLine(ctx, PAD, y, W - PAD); y += 14;
 
-  // Date / time
-  const now = new Date(createdAt || Date.now());
+  /* ── Meta ── */
+  const now     = new Date(createdAt || Date.now());
   const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  ctx.fillStyle = '#555';
-  ctx.font = '12px "Courier New", monospace';
+
+  ctx.font      = '11px "Courier New", Courier, monospace';
+  ctx.fillStyle = '#444';
   ctx.textAlign = 'left';
   ctx.fillText(`Date     : ${dateStr}`, PAD, y);
   ctx.textAlign = 'right';
-  ctx.fillText(timeStr, W - PAD, y); y += 20;
+  ctx.fillText(timeStr, W - PAD, y); y += 18;
 
   ctx.textAlign = 'left';
-  ctx.fillText(`Client   : ${clientName}`, PAD, y); y += 18;
-  ctx.fillText(`Vendeur  : ${vendorName}`, PAD, y); y += 18;
+  ctx.fillText(`Client   : ${clientName || 'Client'}`, PAD, y);   y += 18;
+  ctx.fillText(`Vendeur  : ${vendorName || 'Vendeur'}`, PAD, y);  y += 18;
 
-  dash(ctx, PAD, y, W - PAD); y += 14;
+  dashedLine(ctx, PAD, y, W - PAD); y += 14;
 
-  // Column headers
+  /* ── Column headers ── */
+  ctx.font      = 'bold 9px "Courier New", Courier, monospace';
   ctx.fillStyle = '#aaa';
-  ctx.font = 'bold 10px "Courier New", monospace';
-  ctx.textAlign = 'left';  ctx.fillText('ARTICLE', PAD, y);
-  ctx.textAlign = 'center'; ctx.fillText('QTÉ', W / 2, y);
-  ctx.textAlign = 'right';  ctx.fillText('MONTANT', W - PAD, y); y += 5;
-  dash(ctx, PAD, y, W - PAD); y += 13;
+  ctx.textAlign = 'left';   ctx.fillText('ARTICLE',  PAD,     y);
+  ctx.textAlign = 'center'; ctx.fillText('QTÉ',      W / 2,   y);
+  ctx.textAlign = 'right';  ctx.fillText('MONTANT',  W - PAD, y);
+  y += 8;
+  dashedLine(ctx, PAD, y, W - PAD); y += 12;
 
-  // Items
+  /* ── Items ── */
   for (const item of items) {
-    ctx.fillStyle = '#1a1a1a';
-    ctx.font = '13px "Courier New", monospace';
+    ctx.fillStyle = '#111';
+    ctx.font      = '12px "Courier New", Courier, monospace';
     ctx.textAlign = 'left';
     ctx.fillText(item.name, PAD, y);
+
     ctx.fillStyle = '#666';
-    ctx.font = '12px "Courier New", monospace';
     ctx.textAlign = 'center';
     ctx.fillText(`×${item.qty}`, W / 2, y);
-    ctx.fillStyle = '#1a1a1a';
-    ctx.font = '13px "Courier New", monospace';
+
+    ctx.fillStyle = '#111';
+    ctx.font      = 'bold 12px "Courier New", Courier, monospace';
     ctx.textAlign = 'right';
     ctx.fillText(`$${item.price * item.qty}`, W - PAD, y);
-    y += IH;
+    y += LH;
   }
 
-  dash(ctx, PAD, y, W - PAD); y += 14;
+  dashedLine(ctx, PAD, y, W - PAD); y += 16;
 
-  // Total
+  /* ── Total ── */
   ctx.fillStyle = '#1a0f2e';
-  ctx.font = 'bold 16px "Courier New", monospace';
+  ctx.font      = 'bold 15px "Courier New", Courier, monospace';
   ctx.textAlign = 'left';  ctx.fillText('TOTAL', PAD, y);
-  ctx.textAlign = 'right'; ctx.fillText(`$${total}`, W - PAD, y); y += 32;
+  ctx.textAlign = 'right'; ctx.fillText(`$${total}`, W - PAD, y);
+  y += 36;
 
-  // Points
+  /* ── Points fidélité ── */
   if (hasPoints) {
     ctx.fillStyle = '#7c3aed';
-    ctx.font = 'bold 11px "Courier New", monospace';
+    ctx.font      = 'bold 10px "Courier New", Courier, monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(`\u2605 +${pointsEarned} points fidelite credites`, W / 2, y); y += 28;
+    ctx.fillText(`★  +${pointsEarned} points fidélité crédités`, W / 2, y);
+    y += 30;
   }
 
-  dash(ctx, PAD, y, W - PAD); y += 13;
+  dashedLine(ctx, PAD, y, W - PAD); y += 14;
 
-  // Invoice
+  /* ── Invoice ── */
   ctx.fillStyle = '#7c3aed';
-  ctx.font = 'bold 10px "Courier New", monospace';
+  ctx.font      = 'bold 10px "Courier New", Courier, monospace';
   ctx.textAlign = 'center';
-  ctx.fillText(`N\u00b0 Facture : ${invoiceNumber}`, W / 2, y); y += 20;
+  ctx.fillText(`N° Facture : ${invoiceNumber}`, W / 2, y); y += 22;
 
-  // Thank you
   ctx.fillStyle = '#bbb';
-  ctx.font = '10px "Courier New", monospace';
-  ctx.fillText('Merci pour votre achat !', W / 2, y); y += 14;
+  ctx.font      = '9px "Courier New", Courier, monospace';
+  ctx.fillText('Merci pour votre achat !', W / 2, y); y += 18;
 
-  // Bottom stripe
-  ctx.fillStyle = '#6d28d9';
-  ctx.fillRect(12, H - 7, W - 24, 7);
+  /* ── Bottom stripe ── */
+  ctx.fillStyle = '#7c3aed';
+  ctx.fillRect(8, H - 8, W - 16, 8);
 
   return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
 }
@@ -196,26 +221,19 @@ function CopyIcon() {
     </svg>
   );
 }
-function LinkIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
-    </svg>
-  );
-}
 
-/* ── Component ── */
+/* ── Main Component ── */
 export default function PhysicalSaleModal({ onClose, members, vendorName, getToken, onSaleCreated }) {
-  const [step, setStep] = useState(1);
-  const [hasAccount, setHasAccount] = useState(null);
-  const [memberSearch, setMemberSearch] = useState('');
+  const [step, setStep]                     = useState(1);
+  const [hasAccount, setHasAccount]         = useState(null);
+  const [memberSearch, setMemberSearch]     = useState('');
   const [selectedMember, setSelectedMember] = useState(null);
-  const [guestFirst, setGuestFirst] = useState('');
-  const [guestLast, setGuestLast] = useState('');
-  const [quantities, setQuantities] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null); // { receiptUrl, invoiceNumber }
-  const [copied, setCopied] = useState(null); // 'link' | 'invoice'
+  const [guestFirst, setGuestFirst]         = useState('');
+  const [guestLast, setGuestLast]           = useState('');
+  const [quantities, setQuantities]         = useState({});
+  const [loading, setLoading]               = useState(false);
+  const [result, setResult]                 = useState(null);
+  const [copied, setCopied]                 = useState(null);
   const searchRef = useRef(null);
 
   const filteredMembers = memberSearch.trim().length >= 1
@@ -225,7 +243,7 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
       }).slice(0, 6)
     : [];
 
-  const total = PRODUCTS.reduce((s, p) => s + (quantities[p.id] || 0) * p.price, 0);
+  const total = PRODUCTS.reduce((sum, p) => sum + (quantities[p.id] || 0) * p.price, 0);
   const selectedItems = PRODUCTS
     .filter(p => (quantities[p.id] || 0) > 0)
     .map(p => ({ name: p.name, qty: quantities[p.id], price: p.price }));
@@ -236,9 +254,7 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
 
   const canNext = hasAccount === false
     ? (guestFirst.trim() || guestLast.trim()).length > 0
-    : hasAccount === true
-    ? selectedMember !== null
-    : false;
+    : hasAccount === true ? selectedMember !== null : false;
 
   function changeQty(id, delta) {
     setQuantities(prev => {
@@ -252,25 +268,21 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
     setLoading(true);
 
     const invoiceNumber = generateInvoiceNumber();
-    const now = new Date().toISOString();
-    const pointsEarned = hasAccount && selectedMember ? total : 0;
+    const now           = new Date().toISOString();
+    const pointsEarned  = hasAccount && selectedMember ? total : 0;
 
-    let receiptBase64 = null;
+    // Générer le reçu PNG
+    let receiptBase64  = null;
+    let receiptDataUrl = null;
     try {
-      const blob = await generateReceiptBlob({
-        items: selectedItems,
-        total,
+      const blob     = await generateReceiptBlob({
+        items: selectedItems, total,
         clientName: clientName || 'Client',
         vendorName: vendorName || 'Vendeur',
-        createdAt: now,
-        pointsEarned,
-        invoiceNumber,
+        createdAt: now, pointsEarned, invoiceNumber,
       });
-      receiptBase64 = await new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.readAsDataURL(blob);
-      });
+      receiptDataUrl = await blobToDataUrl(blob);
+      receiptBase64  = receiptDataUrl;
     } catch (e) {
       console.error('Receipt generation error:', e);
     }
@@ -281,10 +293,10 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          clientType: hasAccount ? 'account' : 'guest',
-          discordId: hasAccount ? (selectedMember?.discord_id || null) : null,
-          clientName: clientName || 'Client',
-          items: selectedItems,
+          clientType:   hasAccount ? 'account' : 'guest',
+          discordId:    hasAccount ? (selectedMember?.discord_id || null) : null,
+          clientName:   clientName || 'Client',
+          items:        selectedItems,
           total,
           invoiceNumber,
           receiptBase64,
@@ -292,9 +304,11 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      setResult({ receiptUrl: json.receiptUrl, invoiceNumber });
+
+      // Afficher le reçu depuis le dataUrl local — pas besoin d'attendre Supabase CDN
+      setResult({ receiptUrl: json.receiptUrl, receiptDataUrl, invoiceNumber });
       setStep(3);
-      onSaleCreated && onSaleCreated({ ...json, clientName, vendorName, items: selectedItems, total, createdAt: now });
+      onSaleCreated?.({ ...json, clientName, vendorName, items: selectedItems, total, createdAt: now });
     } catch (e) {
       console.error('Physical sale error:', e);
       alert('Erreur lors de la création de la vente. Vérifiez la console.');
@@ -314,6 +328,7 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
   return (
     <div className={s.overlay} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className={s.modal}>
+
         {/* Header */}
         <div className={s.header}>
           <div className={s.headerLeft}>
@@ -332,7 +347,7 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
           <button className={s.closeBtn} onClick={onClose}>✕</button>
         </div>
 
-        {/* ── Step 1: Client ── */}
+        {/* ── Step 1 ── */}
         {step === 1 && (
           <div className={s.body}>
             <p className={s.question}>Le client a-t-il un compte sur l'espace client ?</p>
@@ -370,11 +385,11 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
                 {filteredMembers.length > 0 && !selectedMember && (
                   <div className={s.memberDropdown}>
                     {filteredMembers.map(m => (
-                      <button key={m.discord_id} className={s.memberOption} onClick={() => { setSelectedMember(m); setMemberSearch(m.rp_name || m.username || ''); }}>
+                      <button key={m.discord_id} className={s.memberOption}
+                        onClick={() => { setSelectedMember(m); setMemberSearch(m.rp_name || m.username || ''); }}>
                         {m.avatar_url
                           ? <img src={m.avatar_url} alt="" className={s.memberAvatar} />
-                          : <div className={s.memberAvatarFallback}>{(m.username || '?')[0].toUpperCase()}</div>
-                        }
+                          : <div className={s.memberAvatarFallback}>{(m.username || '?')[0].toUpperCase()}</div>}
                         <div className={s.memberOptionInfo}>
                           <span className={s.memberOptionName}>{m.rp_name || m.username}</span>
                           {m.rp_name && <span className={s.memberOptionSub}>@{m.username}</span>}
@@ -388,11 +403,10 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
                   <div className={s.selectedMember}>
                     {selectedMember.avatar_url
                       ? <img src={selectedMember.avatar_url} alt="" className={s.memberAvatar} />
-                      : <div className={s.memberAvatarFallback}>{(selectedMember.username || '?')[0].toUpperCase()}</div>
-                    }
+                      : <div className={s.memberAvatarFallback}>{(selectedMember.username || '?')[0].toUpperCase()}</div>}
                     <div className={s.selectedMemberInfo}>
                       <span className={s.selectedMemberName}>{selectedMember.rp_name || selectedMember.username}</span>
-                      <span className={s.selectedMemberSub}>{selectedMember.loyalty_points ?? 0} pts • Achat = +{total > 0 ? total : '?'} pts</span>
+                      <span className={s.selectedMemberSub}>{selectedMember.loyalty_points ?? 0} pts • +{total > 0 ? total : '?'} pts à créditer</span>
                     </div>
                     <button className={s.clearMember} onClick={() => { setSelectedMember(null); setMemberSearch(''); }}>✕</button>
                   </div>
@@ -404,33 +418,28 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
               <div className={s.guestSection}>
                 <label className={s.fieldLabel}>Identité du client (optionnel)</label>
                 <div className={s.nameRow}>
-                  <input type="text" className={s.nameInput} placeholder="Prénom" value={guestFirst} onChange={e => setGuestFirst(e.target.value)} />
-                  <input type="text" className={s.nameInput} placeholder="Nom" value={guestLast} onChange={e => setGuestLast(e.target.value)} />
+                  <input type="text" className={s.nameInput} placeholder="Prénom"
+                    value={guestFirst} onChange={e => setGuestFirst(e.target.value)} />
+                  <input type="text" className={s.nameInput} placeholder="Nom"
+                    value={guestLast} onChange={e => setGuestLast(e.target.value)} />
                 </div>
               </div>
             )}
 
             <div className={s.footer}>
               <button className={s.cancelBtn} onClick={onClose}>Annuler</button>
-              <button
-                className={s.nextBtn}
-                onClick={() => setStep(2)}
-                disabled={!canNext}
-              >
-                Suivant →
-              </button>
+              <button className={s.nextBtn} onClick={() => setStep(2)} disabled={!canNext}>Suivant →</button>
             </div>
           </div>
         )}
 
-        {/* ── Step 2: Products ── */}
+        {/* ── Step 2 ── */}
         {step === 2 && (
           <div className={s.body}>
             <p className={s.question}>
               Sélectionner les produits achetés
               <span className={s.clientTag}>{clientName || 'Client'}</span>
             </p>
-
             <div className={s.productList}>
               {PRODUCTS.map(p => {
                 const qty = quantities[p.id] || 0;
@@ -450,7 +459,6 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
                 );
               })}
             </div>
-
             {total > 0 && (
               <div className={s.totalBar}>
                 <span className={s.totalLabel}>Total</span>
@@ -460,34 +468,32 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
                 )}
               </div>
             )}
-
             <div className={s.footer}>
               <button className={s.cancelBtn} onClick={() => setStep(1)}>← Retour</button>
-              <button
-                className={s.confirmBtn}
-                onClick={handleConfirm}
-                disabled={!selectedItems.length || loading}
-              >
-                {loading ? (
-                  <span className={s.loadingRow}><span className={s.spinner} /> Génération...</span>
-                ) : (
-                  '✓ Confirmer la vente'
-                )}
+              <button className={s.confirmBtn} onClick={handleConfirm} disabled={!selectedItems.length || loading}>
+                {loading
+                  ? <span className={s.loadingRow}><span className={s.spinner} /> Génération du reçu...</span>
+                  : '✓ Confirmer la vente'}
               </button>
             </div>
           </div>
         )}
 
-        {/* ── Step 3: Result ── */}
+        {/* ── Step 3 ── */}
         {step === 3 && result && (
           <div className={s.body}>
             <div className={s.successBadge}><CheckIcon /> Vente enregistrée avec succès</div>
 
-            {result.receiptUrl && (
+            {/* Reçu affiché directement depuis le dataUrl local — instantané */}
+            {(result.receiptDataUrl || result.receiptUrl) && (
               <div className={s.receiptPreview}>
-                <div className={s.receiptPreviewLabel}>Aperçu du ticket</div>
+                <div className={s.receiptPreviewLabel}>Ticket de caisse</div>
                 <div className={s.receiptImageWrap}>
-                  <img src={result.receiptUrl} alt="Ticket de caisse" className={s.receiptImg} />
+                  <img
+                    src={result.receiptDataUrl || result.receiptUrl}
+                    alt="Ticket de caisse"
+                    className={s.receiptImg}
+                  />
                 </div>
               </div>
             )}
@@ -495,7 +501,7 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
             <div className={s.resultFields}>
               {result.receiptUrl && (
                 <div className={s.resultField}>
-                  <span className={s.resultFieldLabel}><LinkIcon /> Lien direct du ticket</span>
+                  <span className={s.resultFieldLabel}>🔗 Lien permanent</span>
                   <div className={s.resultFieldRow}>
                     <input className={s.resultInput} value={result.receiptUrl} readOnly />
                     <button
@@ -526,6 +532,7 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
             </div>
           </div>
         )}
+
       </div>
     </div>
   );

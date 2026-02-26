@@ -76,6 +76,7 @@ export default function ClientPage() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [chatOrder, setChatOrder] = useState(null); // { id } for chat modal
   const [unreadCounts, setUnreadCounts] = useState({}); // { orderId: count }
+  const [receiptLightbox, setReceiptLightbox] = useState(null); // URL reçu lightbox
   const chatOrderRef = useRef(null);
   const [banData, setBanData] = useState(null); // { message } when banned
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
@@ -371,6 +372,17 @@ export default function ClientPage() {
   return (
     <div className={s.layout}>
 
+      {/* ── Receipt Lightbox ── */}
+      {receiptLightbox && (
+        <div className={s.receiptLightboxOverlay} onClick={() => setReceiptLightbox(null)}>
+          <div className={s.receiptLightboxBox} onClick={e => e.stopPropagation()}>
+            <button className={s.receiptLightboxClose} onClick={() => setReceiptLightbox(null)}>✕</button>
+            <p className={s.receiptLightboxTitle}>Ticket de caisse</p>
+            <img src={receiptLightbox} alt="Ticket de caisse" className={s.receiptLightboxImg} />
+          </div>
+        </div>
+      )}
+
       {/* ── Chat Modal ── */}
       {chatOrder && (
         <ChatModal
@@ -558,9 +570,9 @@ export default function ClientPage() {
                           <div className={s.orderFooterRight}>
                             <span className={s.orderTotal}>${order.total}</span>
                             {isPhysical && order.receipt_url && (
-                              <a href={order.receipt_url} target="_blank" rel="noopener noreferrer" className={s.receiptBtn}>
+                              <button className={s.receiptBtn} onClick={() => setReceiptLightbox(order.receipt_url)}>
                                 🧾 Ticket
-                              </a>
+                              </button>
                             )}
                             {!isPhysical && (
                               <button

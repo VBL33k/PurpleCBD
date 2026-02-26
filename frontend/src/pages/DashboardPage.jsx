@@ -155,7 +155,8 @@ export default function DashboardPage() {
   const [physicalSales, setPhysicalSales] = useState([]);
   const [physicalSalesLoading, setPhysicalSalesLoading] = useState(false);
   const [physicalSalesError, setPhysicalSalesError] = useState('');
-  const [newSaleModal, setNewSaleModal] = useState(false);
+  const [newSaleModal, setNewSaleModal]         = useState(false);
+  const [receiptLightbox, setReceiptLightbox]   = useState(null); // URL du reçu à afficher
 
   /* Member actions */
   const [actionLoading, setActionLoading] = useState({});
@@ -844,9 +845,9 @@ export default function DashboardPage() {
                             <span className={s.saleInvoice}>{sale.invoice_number}</span>
                           )}
                           {sale.receipt_url && (
-                            <a href={sale.receipt_url} target="_blank" rel="noopener noreferrer" className={s.saleReceiptLink}>
-                              <ExternalLinkIcon /> Ticket
-                            </a>
+                            <button className={s.saleReceiptLink} onClick={() => setReceiptLightbox(sale.receipt_url)}>
+                              🧾 Ticket
+                            </button>
                           )}
                         </div>
                       </div>
@@ -880,6 +881,17 @@ export default function DashboardPage() {
         )}
 
       </main>
+
+      {/* ── Receipt Lightbox ── */}
+      {receiptLightbox && (
+        <div className={s.receiptLightboxOverlay} onClick={() => setReceiptLightbox(null)}>
+          <div className={s.receiptLightboxBox} onClick={e => e.stopPropagation()}>
+            <button className={s.receiptLightboxClose} onClick={() => setReceiptLightbox(null)}>✕</button>
+            <p className={s.receiptLightboxTitle}>Ticket de caisse</p>
+            <img src={receiptLightbox} alt="Ticket de caisse" className={s.receiptLightboxImg} />
+          </div>
+        </div>
+      )}
 
       {/* ── Physical Sale Modal ── */}
       {newSaleModal && (
