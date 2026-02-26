@@ -952,7 +952,7 @@ export default function DashboardPage() {
     finally { setSigAvatarUploading(false); }
   }
 
-  const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] ?? 'Admin';
+  const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Admin';
   const pendingCount = orders.filter(o => o.status === 'pending').length;
 
   /* Dashboard stats */
