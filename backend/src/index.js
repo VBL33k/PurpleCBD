@@ -477,9 +477,6 @@ app.patch('/api/orders/:id/status', async (req, res) => {
   res.json({ ok: true });
 });
 
-// ── 404 ──
-app.use((_req, res) => res.status(404).json({ error: 'Route non trouvée.' }));
-
 // ── Physical Sales ──
 
 // Créer une vente physique (admin/vendeur)
@@ -584,6 +581,9 @@ app.get('/api/physical-sales', async (req, res) => {
   if (error) return res.status(500).json({ error: 'Erreur récupération ventes.' });
   res.json({ sales: data });
 });
+
+// ── 404 ──
+app.use((_req, res) => res.status(404).json({ error: 'Route non trouvée.' }));
 
 app.listen(PORT, async () => {
   console.log(`Purple CBD API running on port ${PORT}`);
