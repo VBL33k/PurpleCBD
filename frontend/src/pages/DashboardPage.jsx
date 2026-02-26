@@ -125,6 +125,139 @@ function ExternalLinkIcon() {
   );
 }
 
+/* ── Chart Components ── */
+
+function RevenueChart({ orders, sales }) {
+  const days = 14;
+  const now = new Date();
+  const buckets = Array.from({ length: days }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - (days - 1 - i));
+    d.setHours(0, 0, 0, 0);
+    return { date: d, label: d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }), total: 0 };
+  });
+
+  [...orders, ...sales].forEach(item => {
+    const d = new Date(item.created_at);
+    d.setHours(0, 0, 0, 0);
+    const bucket = buckets.find(b => b.date.getTime() === d.getTime());
+    if (bucket) bucket.total += item.total || 0;
+  });
+
+  const maxVal = Math.max(...buckets.map(b => b.total), 1);
+  const W = 560, H = 140, PL = 38, PR = 8, PT = 14, PB = 24;
+  const cw = W - PL - PR, ch = H - PT - PB;
+
+  const pts = buckets.map((b, i) => ({
+    x: +(PL + (i / (days - 1)) * cw).toFixed(1),
+    y: +(PT + ch - (b.total / maxVal) * ch).toFixed(1),
+    total: b.total, label: b.label,
+  }));
+
+  const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+  const fillPath = `M${pts[0].x},${PT + ch} ` +
+    pts.map(p => `L${p.x},${p.y}`).join(' ') +
+    ` L${pts[pts.length - 1].x},${PT + ch} Z`;
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block', overflow: 'visible' }}>
+      <defs>
+        <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {[0, 0.5, 1].map((t, i) => (
+        <g key={i}>
+          <line x1={PL} y1={+(PT + ch * (1 - t)).toFixed(1)} x2={PL + cw} y2={+(PT + ch * (1 - t)).toFixed(1)}
+            stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+          <text x={PL - 5} y={+(PT + ch * (1 - t) + 3.5).toFixed(1)}
+            textAnchor="end" fontSize="8" fill="rgba(255,255,255,0.28)">
+            ${Math.round(maxVal * t)}
+          </text>
+        </g>
+      ))}
+      <path d={fillPath} fill="url(#revGrad)" />
+      <polyline points={polyline} fill="none" stroke="#8b5cf6" strokeWidth="2"
+        strokeLinejoin="round" strokeLinecap="round" />
+      {pts.filter(p => p.total > 0).map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="3" fill="#8b5cf6"
+          stroke="rgba(10,5,20,0.9)" strokeWidth="1.5" />
+      ))}
+      {pts.filter((_, i) => i % 2 === 0).map((p, i) => (
+        <text key={i} x={p.x} y={H - 4} textAnchor="middle"
+          fontSize="7.5" fill="rgba(255,255,255,0.25)">{p.label}</text>
+      ))}
+    </svg>
+  );
+}
+
+function StatusChart({ orders }) {
+  const defs = [
+    { key: 'pending',   label: 'En attente', color: '#f59e0b' },
+    { key: 'ready',     label: 'Prête',      color: '#06b6d4' },
+    { key: 'delivered', label: 'Livrée',     color: '#10b981' },
+    { key: 'picked_up', label: 'Retirée',    color: '#8b5cf6' },
+    { key: 'cancelled', label: 'Annulée',    color: '#ef4444' },
+  ];
+  const counts = defs.map(d => ({ ...d, count: orders.filter(o => o.status === d.key).length }));
+  const max = Math.max(...counts.map(c => c.count), 1);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {counts.map(c => (
+        <div key={c.key}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{c.label}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: c.color }}>{c.count}</span>
+          </div>
+          <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.07)' }}>
+            <div style={{
+              width: `${(c.count / max) * 100}%`, height: '100%', background: c.color,
+              borderRadius: 3, transition: 'width 0.6s ease', minWidth: c.count > 0 ? 5 : 0,
+            }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TopProductsChart({ orders, sales }) {
+  const counts = {};
+  [...orders, ...sales].forEach(item => {
+    (item.items || []).forEach(p => { counts[p.name] = (counts[p.name] || 0) + (p.qty || 1); });
+  });
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const maxQty = sorted[0]?.[1] || 1;
+  const colors = ['#8b5cf6', '#a78bfa', '#7c3aed', '#c4b5fd', '#6d28d9'];
+
+  if (!sorted.length) return (
+    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', textAlign: 'center', padding: '16px 0' }}>
+      Aucune donnée
+    </p>
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {sorted.map(([name, qty], i) => (
+        <div key={name}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{name}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: colors[i] }}>×{qty}</span>
+          </div>
+          <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.07)' }}>
+            <div style={{
+              width: `${(qty / maxQty) * 100}%`, height: '100%',
+              background: colors[i], borderRadius: 3, transition: 'width 0.6s ease',
+            }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -159,6 +292,13 @@ export default function DashboardPage() {
   const [receiptLightbox, setReceiptLightbox]   = useState(null); // URL du reçu à afficher
   const [copiedInvoice, setCopiedInvoice]       = useState(null); // id de la vente dont le N° est copié
   const [copiedLightbox, setCopiedLightbox]     = useState(false);
+
+  /* Search / filters */
+  const [orderSearch, setOrderSearch]         = useState('');
+  const [orderDateFilter, setOrderDateFilter] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState('');
+  const [salesSearch, setSalesSearch]         = useState('');
+  const [salesDateFilter, setSalesDateFilter] = useState('');
 
   /* Member actions */
   const [actionLoading, setActionLoading] = useState({});
@@ -205,6 +345,8 @@ export default function DashboardPage() {
   }
 
   useEffect(() => { fetchSettings(); }, []);
+  useEffect(() => { fetchOrders(); fetchPhysicalSales(); }, []);
+
 
   /* Load orders */
   /* Fetch unread counts (client messages unseen by vendor) */
@@ -324,8 +466,8 @@ export default function DashboardPage() {
 
   function handleTabChange(tab) {
     setActiveTab(tab);
-    if (tab === 'orders') fetchOrders();
-    if (tab === 'sales') fetchPhysicalSales();
+    if (tab === 'orders' || tab === 'dashboard') fetchOrders();
+    if (tab === 'sales'  || tab === 'dashboard') fetchPhysicalSales();
   }
 
   /* Admin token helper */
@@ -444,6 +586,25 @@ export default function DashboardPage() {
 
   /* Dashboard stats */
   const totalRevenue = orders.reduce((s, o) => s + (o.total || 0), 0);
+  const physicalSalesRevenue = physicalSales.reduce((s, sale) => s + (sale.total || 0), 0);
+  const caTotal = totalRevenue + physicalSalesRevenue;
+  const deliveredCount = orders.filter(o => o.status === 'delivered' || o.status === 'picked_up').length;
+  const activeOrdersCount = orders.filter(o => o.status === 'pending' || o.status === 'ready').length;
+
+  const filteredOrders = orders.filter(o => {
+    const q = orderSearch.trim().toLowerCase();
+    if (q && !`${o.rp_name || ''} ${o.username || ''} ${o.guest_name || ''}`.toLowerCase().includes(q)) return false;
+    if (orderDateFilter && new Date(o.created_at).toISOString().slice(0, 10) !== orderDateFilter) return false;
+    if (orderStatusFilter && o.status !== orderStatusFilter) return false;
+    return true;
+  });
+
+  const filteredSales = physicalSales.filter(s => {
+    const q = salesSearch.trim().toLowerCase();
+    if (q && !`${s.rp_name || ''} ${s.guest_name || ''}`.toLowerCase().includes(q)) return false;
+    if (salesDateFilter && new Date(s.created_at).toISOString().slice(0, 10) !== salesDateFilter) return false;
+    return true;
+  });
 
   return (
     <div className={s.layout}>
@@ -517,27 +678,10 @@ export default function DashboardPage() {
             </header>
             <div className={s.content}>
 
-              {/* Stats row */}
-              <div className={s.statsRow}>
-                <div className={s.statCard}>
-                  <span className={s.statNum} style={{ color: '#f59e0b' }}>{pendingCount || members.length > 0 ? pendingCount : '—'}</span>
-                  <span className={s.statLabel}>Commandes en attente</span>
-                </div>
-                <div className={s.statCard}>
-                  <span className={s.statNum}>{members.length}</span>
-                  <span className={s.statLabel}>Membres inscrits</span>
-                </div>
-                <div className={s.statCard}>
-                  <span className={s.statNum}>${totalRevenue}</span>
-                  <span className={s.statLabel}>Chiffre total</span>
-                </div>
-              </div>
-
-              {/* Store controls */}
+              {/* ── Store controls (top) ── */}
               <div className={s.controlsCard}>
                 <h2 className={s.controlsTitle}>Contrôle boutique</h2>
                 <p className={s.controlsSub}>Les changements sont appliqués immédiatement pour les clients.</p>
-
                 {settingsLoading ? (
                   <p className={s.stateMsg}>Chargement...</p>
                 ) : (
@@ -553,16 +697,11 @@ export default function DashboardPage() {
                           {settings.store_open ? 'Les clients sont informés que le magasin est ouvert.' : 'Le magasin est fermé — les clients verront un avertissement lors du retrait.'}
                         </span>
                       </div>
-                      <button
-                        className={`${s.toggle} ${settings.store_open ? s.toggleOn : ''}`}
-                        onClick={() => toggleSetting('store_open')}
-                        disabled={settingsSaving !== null}
-                        aria-label="Boutique ouverte"
-                      >
+                      <button className={`${s.toggle} ${settings.store_open ? s.toggleOn : ''}`}
+                        onClick={() => toggleSetting('store_open')} disabled={settingsSaving !== null} aria-label="Boutique ouverte">
                         <span className={s.toggleKnob} />
                       </button>
                     </div>
-
                     <div className={s.toggleRow}>
                       <div className={s.toggleInfo}>
                         <div className={s.toggleLabelRow}>
@@ -574,18 +713,71 @@ export default function DashboardPage() {
                           {settings.delivery_enabled ? 'Les clients peuvent choisir la livraison au checkout.' : 'La livraison est désactivée — seul le retrait est disponible.'}
                         </span>
                       </div>
-                      <button
-                        className={`${s.toggle} ${settings.delivery_enabled ? s.toggleOn : ''}`}
-                        onClick={() => toggleSetting('delivery_enabled')}
-                        disabled={settingsSaving !== null}
-                        aria-label="Livraison activée"
-                      >
+                      <button className={`${s.toggle} ${settings.delivery_enabled ? s.toggleOn : ''}`}
+                        onClick={() => toggleSetting('delivery_enabled')} disabled={settingsSaving !== null} aria-label="Livraison activée">
                         <span className={s.toggleKnob} />
                       </button>
                     </div>
                   </div>
                 )}
               </div>
+
+              {/* ── KPI cards ── */}
+              <div className={s.kpiRow}>
+                <div className={s.kpiCard}>
+                  <span className={s.kpiNum}>${caTotal}</span>
+                  <span className={s.kpiLabel}>CA Total</span>
+                  <span className={s.kpiSub}>Commandes + ventes physiques</span>
+                </div>
+                <div className={s.kpiCard}>
+                  <span className={s.kpiNum} style={{ color: '#f59e0b' }}>{activeOrdersCount}</span>
+                  <span className={s.kpiLabel}>Commandes actives</span>
+                  <span className={s.kpiSub}>{pendingCount} en attente · {orders.length} total</span>
+                </div>
+                <div className={s.kpiCard}>
+                  <span className={s.kpiNum} style={{ color: '#8b5cf6' }}>{physicalSales.length}</span>
+                  <span className={s.kpiLabel}>Ventes physiques</span>
+                  <span className={s.kpiSub}>${physicalSalesRevenue} encaissés</span>
+                </div>
+                <div className={s.kpiCard}>
+                  <span className={s.kpiNum}>{members.length}</span>
+                  <span className={s.kpiLabel}>Membres inscrits</span>
+                  <span className={s.kpiSub}>{deliveredCount} commandes livrées</span>
+                </div>
+              </div>
+
+              {/* ── Revenue line chart ── */}
+              <div className={s.chartCard}>
+                <div className={s.chartCardHeader}>
+                  <h3 className={s.chartTitle}>Revenus — 14 derniers jours</h3>
+                  <span className={s.chartBadge}>${caTotal} total</span>
+                </div>
+                <div className={s.chartBody}>
+                  <RevenueChart orders={orders} sales={physicalSales} />
+                </div>
+              </div>
+
+              {/* ── Status + Top Products ── */}
+              <div className={s.chartGrid}>
+                <div className={s.chartCard}>
+                  <div className={s.chartCardHeader}>
+                    <h3 className={s.chartTitle}>Commandes par statut</h3>
+                    <span className={s.chartBadge}>{orders.length} total</span>
+                  </div>
+                  <div className={s.chartBody}>
+                    <StatusChart orders={orders} />
+                  </div>
+                </div>
+                <div className={s.chartCard}>
+                  <div className={s.chartCardHeader}>
+                    <h3 className={s.chartTitle}>Produits populaires</h3>
+                  </div>
+                  <div className={s.chartBody}>
+                    <TopProductsChart orders={orders} sales={physicalSales} />
+                  </div>
+                </div>
+              </div>
+
             </div>
           </>
         )}
@@ -696,14 +888,51 @@ export default function DashboardPage() {
               </button>
             </header>
             <div className={s.content}>
+              {/* Filter bar */}
+              <div className={s.filterBar}>
+                <div className={s.filterSearch}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={s.filterSearchIcon}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input
+                    className={s.filterInput}
+                    type="text"
+                    placeholder="Rechercher un client..."
+                    value={orderSearch}
+                    onChange={e => setOrderSearch(e.target.value)}
+                  />
+                </div>
+                <input
+                  className={s.filterDate}
+                  type="date"
+                  value={orderDateFilter}
+                  onChange={e => setOrderDateFilter(e.target.value)}
+                  title="Filtrer par date"
+                />
+                <select
+                  className={s.filterSelect}
+                  value={orderStatusFilter}
+                  onChange={e => setOrderStatusFilter(e.target.value)}
+                >
+                  <option value="">Tous les statuts</option>
+                  {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                {(orderSearch || orderDateFilter || orderStatusFilter) && (
+                  <button className={s.filterReset} onClick={() => { setOrderSearch(''); setOrderDateFilter(''); setOrderStatusFilter(''); }}>
+                    ✕
+                  </button>
+                )}
+              </div>
+
               {ordersLoading && <p className={s.stateMsg}>Chargement...</p>}
               {ordersError && <p className={s.stateError}>{ordersError}</p>}
               {!ordersLoading && !ordersError && orders.length === 0 && (
                 <p className={s.stateMsg}>Aucune commande pour l'instant.</p>
               )}
-              {!ordersLoading && !ordersError && orders.length > 0 && (
+              {!ordersLoading && !ordersError && orders.length > 0 && filteredOrders.length === 0 && (
+                <p className={s.stateMsg}>Aucune commande ne correspond aux filtres.</p>
+              )}
+              {!ordersLoading && !ordersError && filteredOrders.length > 0 && (
                 <div className={s.ordersList}>
-                  {orders.map(order => {
+                  {filteredOrders.map(order => {
                     const st = STATUS_OPTIONS.find(o => o.value === order.status) || STATUS_OPTIONS[0];
                     return (
                       <div key={order.id} className={s.orderCard}>
@@ -816,6 +1045,32 @@ export default function DashboardPage() {
                 <span className={s.newSaleBtnText}>Nouvelle vente physique</span>
               </button>
 
+              {/* Filter bar */}
+              <div className={s.filterBar}>
+                <div className={s.filterSearch}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={s.filterSearchIcon}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input
+                    className={s.filterInput}
+                    type="text"
+                    placeholder="Rechercher un client..."
+                    value={salesSearch}
+                    onChange={e => setSalesSearch(e.target.value)}
+                  />
+                </div>
+                <input
+                  className={s.filterDate}
+                  type="date"
+                  value={salesDateFilter}
+                  onChange={e => setSalesDateFilter(e.target.value)}
+                  title="Filtrer par date"
+                />
+                {(salesSearch || salesDateFilter) && (
+                  <button className={s.filterReset} onClick={() => { setSalesSearch(''); setSalesDateFilter(''); }}>
+                    ✕
+                  </button>
+                )}
+              </div>
+
               {physicalSalesLoading && <p className={s.stateMsg}>Chargement...</p>}
               {physicalSalesError && <p className={s.stateError}>{physicalSalesError}</p>}
               {!physicalSalesLoading && !physicalSalesError && physicalSales.length === 0 && (
@@ -825,9 +1080,12 @@ export default function DashboardPage() {
                   <p className={s.emptySalesSub}>Les ventes créées apparaîtront ici.</p>
                 </div>
               )}
-              {!physicalSalesLoading && !physicalSalesError && physicalSales.length > 0 && (
+              {!physicalSalesLoading && !physicalSalesError && physicalSales.length > 0 && filteredSales.length === 0 && (
+                <p className={s.stateMsg}>Aucune vente ne correspond aux filtres.</p>
+              )}
+              {!physicalSalesLoading && !physicalSalesError && filteredSales.length > 0 && (
                 <div className={s.salesList}>
-                  {physicalSales.map(sale => (
+                  {filteredSales.map(sale => (
                     <div key={sale.id} className={s.saleCard}>
                       <div className={s.saleCardTop}>
                         <div className={s.saleClientInfo}>

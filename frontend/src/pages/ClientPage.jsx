@@ -18,6 +18,162 @@ function updateSeen(orderId) {
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://purple-cbd-api.onrender.com';
 const LOGO = 'https://i.imgur.com/CbcU0Qp.png';
 
+/* ── Receipt helpers (pour commandes livrées/retirées) ── */
+async function _loadImg(src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    let done = false;
+    const fin = r => { if (!done) { done = true; resolve(r); } };
+    img.onload  = () => fin(img);
+    img.onerror = () => fin(null);
+    setTimeout(() => fin(null), 3000);
+    img.src = src;
+  });
+}
+function _dashedLine(ctx, x1, y, x2) {
+  ctx.save();
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = '#e0dbd8';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
+  ctx.restore();
+}
+function _blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+async function generateOrderReceiptBlob({ items, total, clientName, vendorName, createdAt, pointsEarned, invoiceNumber }) {
+  const SCALE = 2;
+  const W = 400;
+  const PAD = 32;
+  const LH = 28;
+  const hasPoints = pointsEarned > 0;
+  const H = 30 + 20 + 64 + 22 + 14 + 14
+          + 18 + 18 + 18 + 14
+          + 14 + 8
+          + items.length * LH + 16
+          + 16 + 36
+          + (hasPoints ? 30 : 0)
+          + 14 + 22 + 18 + 16;
+
+  const canvas = document.createElement('canvas');
+  canvas.width  = W * SCALE;
+  canvas.height = H * SCALE;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(SCALE, SCALE);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
+  ctx.fillStyle = '#f5f4f1';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(8, 0, W - 16, H);
+
+  let y = 0;
+  ctx.fillStyle = '#7c3aed';
+  ctx.fillRect(8, 0, W - 16, 8);
+  y = 8 + 20;
+
+  const logo = await _loadImg(LOGO);
+  const LS = 56;
+  if (logo) {
+    ctx.drawImage(logo, (W - LS) / 2, y, LS, LS);
+    y += LS + 10;
+  } else {
+    const cx = W / 2, cy = y + 28;
+    ctx.fillStyle = '#7c3aed';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 26); ctx.lineTo(cx + 22, cy);
+    ctx.lineTo(cx, cy + 26); ctx.lineTo(cx - 22, cy);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('P', cx, cy);
+    ctx.textBaseline = 'alphabetic';
+    y += 66;
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#1a0f2e';
+  ctx.font = 'bold 17px "Courier New", Courier, monospace';
+  ctx.fillText('PURPLE CBD', W / 2, y); y += 18;
+  ctx.fillStyle = '#9333ea';
+  ctx.font = '9.5px "Courier New", Courier, monospace';
+  ctx.fillText('▪  TICKET DE CAISSE  ▪', W / 2, y); y += 18;
+  _dashedLine(ctx, PAD, y, W - PAD); y += 14;
+
+  const now = new Date(createdAt || Date.now());
+  const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  ctx.font = '11px "Courier New", Courier, monospace';
+  ctx.fillStyle = '#444';
+  ctx.textAlign = 'left';
+  ctx.fillText(`Date     : ${dateStr}`, PAD, y);
+  ctx.textAlign = 'right';
+  ctx.fillText(timeStr, W - PAD, y); y += 18;
+  ctx.textAlign = 'left';
+  ctx.fillText(`Client   : ${clientName || 'Client'}`, PAD, y); y += 18;
+  ctx.fillText(`Canal    : ${vendorName || 'Commande en ligne'}`, PAD, y); y += 18;
+  _dashedLine(ctx, PAD, y, W - PAD); y += 14;
+
+  ctx.font = 'bold 9px "Courier New", Courier, monospace';
+  ctx.fillStyle = '#aaa';
+  ctx.textAlign = 'left';   ctx.fillText('ARTICLE',  PAD,     y);
+  ctx.textAlign = 'center'; ctx.fillText('QTÉ',      W / 2,   y);
+  ctx.textAlign = 'right';  ctx.fillText('MONTANT',  W - PAD, y);
+  y += 8;
+  _dashedLine(ctx, PAD, y, W - PAD); y += 12;
+
+  for (const item of items) {
+    ctx.fillStyle = '#111';
+    ctx.font = '12px "Courier New", Courier, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(item.name, PAD, y);
+    ctx.fillStyle = '#666';
+    ctx.textAlign = 'center';
+    ctx.fillText(`×${item.qty}`, W / 2, y);
+    ctx.fillStyle = '#111';
+    ctx.font = 'bold 12px "Courier New", Courier, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`$${(item.price ?? 0) * item.qty}`, W - PAD, y);
+    y += LH;
+  }
+
+  _dashedLine(ctx, PAD, y, W - PAD); y += 16;
+  ctx.fillStyle = '#1a0f2e';
+  ctx.font = 'bold 15px "Courier New", Courier, monospace';
+  ctx.textAlign = 'left';  ctx.fillText('TOTAL', PAD, y);
+  ctx.textAlign = 'right'; ctx.fillText(`$${total}`, W - PAD, y);
+  y += 36;
+
+  if (hasPoints) {
+    ctx.fillStyle = '#7c3aed';
+    ctx.font = 'bold 10px "Courier New", Courier, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`★  +${pointsEarned} points fidélité crédités`, W / 2, y);
+    y += 30;
+  }
+
+  _dashedLine(ctx, PAD, y, W - PAD); y += 14;
+  ctx.fillStyle = '#7c3aed';
+  ctx.font = 'bold 10px "Courier New", Courier, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(`N° Facture : ${invoiceNumber}`, W / 2, y); y += 22;
+  ctx.fillStyle = '#bbb';
+  ctx.font = '9px "Courier New", Courier, monospace';
+  ctx.fillText('Merci pour votre achat !', W / 2, y);
+  ctx.fillStyle = '#7c3aed';
+  ctx.fillRect(8, H - 8, W - 16, 8);
+
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
 const PRODUCTS = [
   { id: 1, name: 'Purple Haze', strain: 'Sativa Dominante', badge: 'Signature', price: 150,
     tags: ['Créatif', 'Euphorisant', 'Diurne'],
@@ -78,6 +234,8 @@ export default function ClientPage() {
   const [unreadCounts, setUnreadCounts] = useState({}); // { orderId: count }
   const [receiptLightbox, setReceiptLightbox] = useState(null); // URL reçu lightbox
   const [copiedLightbox, setCopiedLightbox]   = useState(false);
+  const [generatedReceipts, setGeneratedReceipts] = useState({}); // orderId -> dataUrl
+  const [generatingReceiptId, setGeneratingReceiptId] = useState(null);
   const chatOrderRef = useRef(null);
   const [banData, setBanData] = useState(null); // { message } when banned
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
@@ -300,6 +458,38 @@ export default function ClientPage() {
     if (tab === 'orders') loadMyOrders();
   }
 
+  async function handleOrderTicket(order) {
+    // Si déjà généré, ouvrir directement
+    if (generatedReceipts[order.id]) {
+      setReceiptLightbox(generatedReceipts[order.id]);
+      return;
+    }
+    setGeneratingReceiptId(order.id);
+    try {
+      const items = (order.items || []).map(item => ({
+        name: item.name,
+        qty: item.qty,
+        price: item.price ?? (PRODUCTS.find(p => p.name === item.name)?.price ?? 0),
+      }));
+      const blob = await generateOrderReceiptBlob({
+        items,
+        total: order.total,
+        clientName: user?.rpName || user?.username || 'Client',
+        vendorName: 'Commande en ligne',
+        createdAt: order.created_at,
+        pointsEarned: Math.floor(order.total * 0.1),
+        invoiceNumber: `#${order.id.slice(-6).toUpperCase()}`,
+      });
+      const dataUrl = await _blobToDataUrl(blob);
+      setGeneratedReceipts(prev => ({ ...prev, [order.id]: dataUrl }));
+      setReceiptLightbox(dataUrl);
+    } catch (e) {
+      console.error('Receipt generation error:', e);
+    } finally {
+      setGeneratingReceiptId(null);
+    }
+  }
+
   async function handleOrder() {
     if (!cartItems.length) return;
     if (deliveryType === 'delivery' && !address.trim()) return;
@@ -380,17 +570,19 @@ export default function ClientPage() {
             <button className={s.receiptLightboxClose} onClick={() => setReceiptLightbox(null)}>✕</button>
             <p className={s.receiptLightboxTitle}>Ticket de caisse</p>
             <img src={receiptLightbox} alt="Ticket de caisse" className={s.receiptLightboxImg} />
-            <div className={s.receiptLightboxUrlRow}>
-              <input className={s.receiptLightboxUrlInput} value={receiptLightbox} readOnly />
-              <button
-                className={`${s.receiptLightboxCopyBtn} ${copiedLightbox ? s.receiptLightboxCopyDone : ''}`}
-                onClick={async () => {
-                  try { await navigator.clipboard.writeText(receiptLightbox); setCopiedLightbox(true); setTimeout(() => setCopiedLightbox(false), 2000); } catch {}
-                }}
-              >
-                {copiedLightbox ? '✓ Copié' : '⎘ Copier'}
-              </button>
-            </div>
+            {!receiptLightbox.startsWith('data:') && (
+              <div className={s.receiptLightboxUrlRow}>
+                <input className={s.receiptLightboxUrlInput} value={receiptLightbox} readOnly />
+                <button
+                  className={`${s.receiptLightboxCopyBtn} ${copiedLightbox ? s.receiptLightboxCopyDone : ''}`}
+                  onClick={async () => {
+                    try { await navigator.clipboard.writeText(receiptLightbox); setCopiedLightbox(true); setTimeout(() => setCopiedLightbox(false), 2000); } catch {}
+                  }}
+                >
+                  {copiedLightbox ? '✓ Copié' : '⎘ Copier'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -588,18 +780,33 @@ export default function ClientPage() {
                               </button>
                             )}
                             {!isPhysical && (
-                              <button
-                                className={`${s.orderChatBtn} ${unreadCounts[order.id] ? s.orderChatBtnUnread : ''}`}
-                                onClick={() => openChat(order.id)}
-                              >
-                                {unreadCounts[order.id] ? <span className={s.chatUnreadDot} /> : null}
-                                <ChatIcon /> Chat
-                                {unreadCounts[order.id] > 0 && (
-                                  <span style={{ fontSize: '10px', fontWeight: 700, marginLeft: 2 }}>
-                                    {unreadCounts[order.id]}
-                                  </span>
-                                )}
-                              </button>
+                              (order.status === 'delivered' || order.status === 'picked_up') ? (
+                                <button
+                                  className={s.receiptBtn}
+                                  onClick={() => handleOrderTicket(order)}
+                                  disabled={generatingReceiptId === order.id}
+                                >
+                                  {generatingReceiptId === order.id ? (
+                                    <span style={{ fontSize: '10px' }}>...</span>
+                                  ) : (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="13" y2="15"/></svg>
+                                  )}
+                                  Ticket
+                                </button>
+                              ) : (
+                                <button
+                                  className={`${s.orderChatBtn} ${unreadCounts[order.id] ? s.orderChatBtnUnread : ''}`}
+                                  onClick={() => openChat(order.id)}
+                                >
+                                  {unreadCounts[order.id] ? <span className={s.chatUnreadDot} /> : null}
+                                  <ChatIcon /> Chat
+                                  {unreadCounts[order.id] > 0 && (
+                                    <span style={{ fontSize: '10px', fontWeight: 700, marginLeft: 2 }}>
+                                      {unreadCounts[order.id]}
+                                    </span>
+                                  )}
+                                </button>
+                              )
                             )}
                           </div>
                         </div>

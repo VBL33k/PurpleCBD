@@ -269,7 +269,7 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
 
     const invoiceNumber = generateInvoiceNumber();
     const now           = new Date().toISOString();
-    const pointsEarned  = hasAccount && selectedMember ? total : 0;
+    const pointsEarned  = hasAccount && selectedMember ? Math.floor(total * 0.1) : 0; // 10% de l'argent dépensé
 
     // Générer le reçu PNG
     let receiptBase64  = null;
@@ -406,7 +406,7 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
                       : <div className={s.memberAvatarFallback}>{(selectedMember.username || '?')[0].toUpperCase()}</div>}
                     <div className={s.selectedMemberInfo}>
                       <span className={s.selectedMemberName}>{selectedMember.rp_name || selectedMember.username}</span>
-                      <span className={s.selectedMemberSub}>{selectedMember.loyalty_points ?? 0} pts • +{total > 0 ? total : '?'} pts à créditer</span>
+                      <span className={s.selectedMemberSub}>{selectedMember.loyalty_points ?? 0} pts • +{total > 0 ? Math.floor(total * 0.1) : '?'} pts à créditer</span>
                     </div>
                     <button className={s.clearMember} onClick={() => { setSelectedMember(null); setMemberSearch(''); }}>✕</button>
                   </div>
@@ -464,7 +464,7 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
                 <span className={s.totalLabel}>Total</span>
                 <span className={s.totalAmount}>${total}</span>
                 {hasAccount && selectedMember && (
-                  <span className={s.pointsPreview}>+{total} pts pour {selectedMember.rp_name || selectedMember.username}</span>
+                  <span className={s.pointsPreview}>+{Math.floor(total * 0.1)} pts pour {selectedMember.rp_name || selectedMember.username}</span>
                 )}
               </div>
             )}

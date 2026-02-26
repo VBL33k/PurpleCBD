@@ -271,7 +271,7 @@ app.post('/api/orders', async (req, res) => {
   if (!discordId || !items?.length) return res.status(400).json({ error: 'discordId et items requis.' });
   if (deliveryType === 'delivery' && !address?.trim()) return res.status(400).json({ error: 'Adresse requise pour la livraison.' });
 
-  const pointsEarned = total; // 1 pt par dollar
+  const pointsEarned = Math.floor(total * 0.1); // 10% de l'argent dépensé
 
   const { data, error } = await supabase.from('orders').insert({
     discord_id: discordId,
@@ -491,7 +491,7 @@ app.post('/api/physical-sales', async (req, res) => {
 
   const vendorName = user.email?.split('@')[0] || 'Vendeur';
   const vendorUserId = user.id;
-  const pointsEarned = clientType === 'account' && discordId ? total : 0;
+  const pointsEarned = clientType === 'account' && discordId ? Math.floor(total * 0.1) : 0; // 10% de l'argent dépensé
 
   // Upload receipt to ImgBB
   const IMGBB_KEY = 'bb5c194616ba0824a34184c2e9faf5ba';

@@ -298,6 +298,100 @@
   letter-spacing: 0.04em;
 }
 
+/* ── KPI row ── */
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.kpiCard {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpiCard::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #7c3aed, #8b5cf6, transparent);
+  opacity: 0.6;
+}
+
+.kpiNum {
+  font-family: var(--font-body);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.kpiLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.kpiSub {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* ── Chart cards ── */
+.chartCard {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.chartCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.chartTitle {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.chartBadge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #a78bfa;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 20px;
+  padding: 3px 10px;
+}
+
+.chartBody {
+  padding: 16px 22px 18px;
+}
+
+.chartGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
 /* ── Store controls card ── */
 .controlsCard {
   background: var(--glass);
@@ -1168,6 +1262,112 @@
   font-size: 14px;
 }
 
+/* ── Filter bar ── */
+.filterBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.filterSearch {
+  position: relative;
+  flex: 1;
+  min-width: 160px;
+  max-width: 280px;
+}
+
+.filterSearchIcon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.filterInput {
+  width: 100%;
+  padding: 7px 10px 7px 30px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: var(--white);
+  font-size: 12px;
+  font-family: var(--font-body);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.filterInput:focus {
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.filterInput::placeholder {
+  color: var(--text-muted);
+}
+
+.filterDate {
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: var(--font-body);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.filterDate:focus {
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.filterDate::-webkit-calendar-picker-indicator {
+  filter: invert(0.6);
+  cursor: pointer;
+}
+
+.filterSelect {
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: var(--font-body);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.filterSelect:focus {
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.filterReset {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 8px;
+  color: #ef4444;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.filterReset:hover {
+  background: rgba(239, 68, 68, 0.22);
+}
+
 /* ── Sales List ── */
 .salesList {
   display: flex;
@@ -1508,6 +1708,8 @@
   .header { padding: 20px 20px 0; }
   .content { padding: 18px 20px 60px; }
   .statsRow { grid-template-columns: 1fr 1fr; }
+  .kpiRow { grid-template-columns: 1fr 1fr; }
+  .chartGrid { grid-template-columns: 1fr; }
   .orderCardTop { flex-direction: column; align-items: flex-start; }
   .orderActions { flex-direction: column; align-items: flex-start; }
   .statusSelect { gap: 4px; }
@@ -1516,4 +1718,6 @@
 @media (max-width: 560px) {
   .statsRow { grid-template-columns: 1fr; }
   .statNum { font-size: 26px; }
+  .kpiRow { grid-template-columns: 1fr 1fr; }
+  .kpiNum { font-size: 22px; }
 }
