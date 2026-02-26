@@ -1076,7 +1076,7 @@
   border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: 18px;
   padding: 20px;
-  max-width: 460px;
+  max-width: 560px;
   width: 100%;
   box-shadow: 0 32px 100px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(139, 92, 246, 0.1);
   display: flex;
@@ -1120,7 +1120,7 @@
   width: 100%;
   border-radius: 10px;
   display: block;
-  filter: brightness(0.88) contrast(1.03);
+  filter: brightness(0.78) contrast(1.45);
   image-rendering: -webkit-optimize-contrast;
 }
 
