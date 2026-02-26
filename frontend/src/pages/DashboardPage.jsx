@@ -274,6 +274,113 @@ function TopProductsChart({ orders, sales }) {
   );
 }
 
+/* ── Signature generation helpers ── */
+async function _loadImg(src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    let done = false;
+    const fin = r => { if (!done) { done = true; resolve(r); } };
+    img.onload  = () => fin(img);
+    img.onerror = () => fin(null);
+    setTimeout(() => fin(null), 3000);
+    img.src = src;
+  });
+}
+
+async function generateSignatureBlob(vendorName, avatarUrl) {
+  const LOGO_URL = 'https://i.imgur.com/CbcU0Qp.png';
+  const W = 500, H = 150, SCALE = 2;
+  const canvas = document.createElement('canvas');
+  canvas.width  = W * SCALE;
+  canvas.height = H * SCALE;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(SCALE, SCALE);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
+  // Background gradient
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, '#0c0618');
+  bg.addColorStop(1, '#140a2a');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Left purple accent bar
+  ctx.fillStyle = '#8b5cf6';
+  ctx.fillRect(0, 0, 4, H);
+
+  // Bottom bar
+  const bar = ctx.createLinearGradient(0, 0, W, 0);
+  bar.addColorStop(0, '#8b5cf6');
+  bar.addColorStop(1, '#6d28d9');
+  ctx.fillStyle = bar;
+  ctx.fillRect(0, H - 3, W, 3);
+
+  // Logo (left side)
+  const logo = await _loadImg(LOGO_URL);
+  if (logo) {
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    ctx.drawImage(logo, 18, (H - 60) / 2, 60, 60);
+    ctx.restore();
+  }
+
+  // Avatar circle (right side, optional)
+  let avatarX = W - 20;
+  if (avatarUrl) {
+    const av = await _loadImg(avatarUrl);
+    if (av) {
+      const r = 32, cx = W - 20 - r, cy = H / 2;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(av, cx - r, cy - r, r * 2, r * 2);
+      ctx.restore();
+      // Border
+      ctx.strokeStyle = '#8b5cf6';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+      avatarX = cx - r - 12;
+    }
+  }
+
+  // Divider line
+  ctx.strokeStyle = 'rgba(139,92,246,0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(90, 20);
+  ctx.lineTo(90, H - 20);
+  ctx.stroke();
+
+  // Vendor name
+  const maxTextW = avatarX - 110;
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `700 22px Georgia, serif`;
+  const name = vendorName || 'Purple CBD';
+  // Truncate if needed
+  let displayN = name;
+  while (ctx.measureText(displayN).width > maxTextW && displayN.length > 3) {
+    displayN = displayN.slice(0, -1);
+  }
+  ctx.fillText(displayN, 106, H / 2 - 4);
+
+  // Role
+  ctx.fillStyle = '#a78bfa';
+  ctx.font = '400 12px "Helvetica Neue", Arial, sans-serif';
+  ctx.fillText('Vendeur agréé • Purple CBD', 106, H / 2 + 17);
+
+  // Tagline
+  ctx.fillStyle = 'rgba(255,255,255,0.28)';
+  ctx.font = '400 10px "Helvetica Neue", Arial, sans-serif';
+  ctx.fillText('purplecbd.com', 106, H / 2 + 36);
+
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -322,6 +429,20 @@ export default function DashboardPage() {
   const [productForm, setProductForm]         = useState(null);
   const [productSaving, setProductSaving]     = useState(false);
   const [productImgUploading, setProductImgUploading] = useState(false);
+
+  /* Vendor profile (Settings tab) */
+  const [profileForm, setProfileForm]           = useState({ displayName: '', birthdate: '', address: '', avatarUrl: '' });
+  const [profileLoading, setProfileLoading]     = useState(false);
+  const [profileSaving, setProfileSaving]       = useState(false);
+  const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
+  const [passForm, setPassForm]                 = useState({ newPass: '', confirmPass: '' });
+  const [passSaving, setPassSaving]             = useState(false);
+  const [passMsg, setPassMsg]                   = useState(null); // { ok, text }
+  const [generatedSigUrl, setGeneratedSigUrl]   = useState('');
+  const [customSigUrl, setCustomSigUrl]         = useState('');
+  const [sigGenerating, setSigGenerating]       = useState(false);
+  const [sigCopied, setSigCopied]               = useState(false);
+  const [sigAvatarUploading, setSigAvatarUploading] = useState(false);
 
   /* Member detail */
   const [memberDetail, setMemberDetail] = useState(null);
@@ -495,6 +616,7 @@ export default function DashboardPage() {
     if (tab === 'orders'    || tab === 'dashboard') fetchOrders();
     if (tab === 'sales'     || tab === 'dashboard') fetchPhysicalSales();
     if (tab === 'catalogue' || tab === 'dashboard') fetchProducts();
+    if (tab === 'settings') loadVendorProfile();
   }
 
   /* Admin token helper */
@@ -645,9 +767,22 @@ export default function DashboardPage() {
     try {
       const token = await getToken();
       await fetch(`${BACKEND_URL}/api/products/${id}`, {
-        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ active: false }),
       });
       setProducts(prev => prev.map(p => p.id === id ? { ...p, active: false } : p));
+    } catch (e) { console.error(e); }
+  }
+
+  async function hardDeleteProduct(id) {
+    try {
+      const token = await getToken();
+      await fetch(`${BACKEND_URL}/api/products/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setProducts(prev => prev.filter(p => p.id !== id));
     } catch (e) { console.error(e); }
   }
 
@@ -700,7 +835,124 @@ export default function DashboardPage() {
     }
   }
 
-  const displayName = user?.email?.split('@')[0] ?? 'Admin';
+  /* ── Vendor profile (Settings) ── */
+  async function loadVendorProfile() {
+    setProfileLoading(true);
+    try {
+      const { data: { user: u } } = await supabase.auth.getUser();
+      const meta = u?.user_metadata || {};
+      setProfileForm({
+        displayName: meta.display_name || u?.email?.split('@')[0] || '',
+        birthdate:   meta.birthdate   || '',
+        address:     meta.address     || '',
+        avatarUrl:   meta.avatar_url  || '',
+      });
+      setCustomSigUrl(meta.signature_url     || '');
+      setGeneratedSigUrl(meta.signature_gen_url || '');
+    } catch (e) { console.error(e); }
+    finally { setProfileLoading(false); }
+  }
+
+  async function saveVendorProfile() {
+    setProfileSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          display_name:      profileForm.displayName,
+          birthdate:         profileForm.birthdate,
+          address:           profileForm.address,
+          avatar_url:        profileForm.avatarUrl,
+          signature_url:     customSigUrl || generatedSigUrl,
+          signature_gen_url: generatedSigUrl,
+        },
+      });
+      if (error) throw error;
+      const { data: { user: u } } = await supabase.auth.getUser();
+      setUser(u);
+      setProfileSaveSuccess(true);
+      setTimeout(() => setProfileSaveSuccess(false), 2500);
+    } catch (e) { console.error(e); }
+    finally { setProfileSaving(false); }
+  }
+
+  async function changePassword() {
+    if (passForm.newPass !== passForm.confirmPass) {
+      setPassMsg({ ok: false, text: 'Les mots de passe ne correspondent pas.' });
+      return;
+    }
+    if (passForm.newPass.length < 6) {
+      setPassMsg({ ok: false, text: 'Minimum 6 caractères requis.' });
+      return;
+    }
+    setPassSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: passForm.newPass });
+      if (error) throw error;
+      setPassMsg({ ok: true, text: 'Mot de passe modifié avec succès.' });
+      setPassForm({ newPass: '', confirmPass: '' });
+    } catch (e) {
+      setPassMsg({ ok: false, text: e.message || 'Erreur lors du changement.' });
+    } finally {
+      setPassSaving(false);
+      setTimeout(() => setPassMsg(null), 4000);
+    }
+  }
+
+  async function generateVendorSignature() {
+    setSigGenerating(true);
+    try {
+      const blob = await generateSignatureBlob(
+        profileForm.displayName || displayName,
+        profileForm.avatarUrl || null,
+      );
+      const reader = new FileReader();
+      const base64 = await new Promise((resolve, reject) => {
+        reader.onload  = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      const token = await getToken();
+      const res = await fetch(`${BACKEND_URL}/api/upload-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ imageBase64: base64 }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        setGeneratedSigUrl(data.url);
+        await supabase.auth.updateUser({ data: { signature_gen_url: data.url } });
+      }
+    } catch (e) { console.error(e); }
+    finally { setSigGenerating(false); }
+  }
+
+  async function resetSignature() {
+    setCustomSigUrl('');
+    await supabase.auth.updateUser({ data: { signature_url: generatedSigUrl } });
+  }
+
+  async function uploadVendorAvatar(file) {
+    setSigAvatarUploading(true);
+    try {
+      const reader = new FileReader();
+      const base64 = await new Promise((resolve, reject) => {
+        reader.onload  = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const token = await getToken();
+      const res = await fetch(`${BACKEND_URL}/api/upload-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ imageBase64: base64 }),
+      });
+      const data = await res.json();
+      if (data.url) setProfileForm(p => ({ ...p, avatarUrl: data.url }));
+    } catch (e) { console.error(e); }
+    finally { setSigAvatarUploading(false); }
+  }
+
+  const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] ?? 'Admin';
   const pendingCount = orders.filter(o => o.status === 'pending').length;
 
   /* Dashboard stats */
@@ -1322,6 +1574,13 @@ export default function DashboardPage() {
                             Réactiver
                           </button>
                         )}
+                        <button
+                          className={`${s.actionBtnSmall} ${s.actionBtnRed} ${s.actionBtnIcon}`}
+                          title="Supprimer définitivement"
+                          onClick={() => setConfirmModal({ label: `Supprimer définitivement "${p.name}" ? Cette action est irréversible.`, onConfirm: () => hardDeleteProduct(p.id) })}
+                        >
+                          <TrashIcon />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1337,17 +1596,208 @@ export default function DashboardPage() {
             <header className={s.header}>
               <div>
                 <h1 className={s.pageTitle}>Paramètres</h1>
-                <p className={s.pageSubtitle}>Configuration avancée de la boutique</p>
+                <p className={s.pageSubtitle}>Profil vendeur &amp; configuration</p>
               </div>
             </header>
             <div className={s.content}>
-              <div className={s.emptySettings}>
-                <div className={s.emptySettingsIcon}>
-                  <SettingsIcon />
+              {profileLoading ? (
+                <p className={s.stateMsg}>Chargement du profil...</p>
+              ) : (
+                <div className={s.settingsGrid}>
+
+                  {/* ── Card : Profil ── */}
+                  <div className={s.settingsCard}>
+                    <div className={s.settingsCardTitleRow}>
+                      <h3 className={s.settingsCardTitle}>Profil vendeur</h3>
+                      <p className={s.settingsCardSub}>Photo, nom affiché, coordonnées</p>
+                    </div>
+
+                    {/* Avatar row */}
+                    <div className={s.profileAvatarRow}>
+                      <div className={s.profileAvatarPreview}>
+                        {profileForm.avatarUrl
+                          ? <img src={profileForm.avatarUrl} alt="avatar" className={s.profileAvatarImg} />
+                          : <div className={s.profileAvatarFallback}>{(profileForm.displayName || displayName)[0]?.toUpperCase() || '?'}</div>
+                        }
+                      </div>
+                      <div className={s.profileAvatarActions}>
+                        <label className={`${s.actionBtnSmall} ${s.profileAvatarUploadBtn}`}>
+                          {sigAvatarUploading ? 'Upload...' : 'Changer la photo'}
+                          <input type="file" accept="image/*" style={{ display: 'none' }}
+                            onChange={e => e.target.files[0] && uploadVendorAvatar(e.target.files[0])} />
+                        </label>
+                        {profileForm.avatarUrl && (
+                          <button className={s.actionBtnSmall} onClick={() => setProfileForm(p => ({ ...p, avatarUrl: '' }))}>
+                            Retirer
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className={s.settingsFormGrid}>
+                      <div className={s.productFormField}>
+                        <label className={s.productFormLabel}>Nom affiché</label>
+                        <input className={s.productFormInput}
+                          value={profileForm.displayName}
+                          onChange={e => setProfileForm(p => ({ ...p, displayName: e.target.value }))}
+                          placeholder="Votre prénom ou pseudo" />
+                      </div>
+                      <div className={s.productFormField}>
+                        <label className={s.productFormLabel}>Date de naissance</label>
+                        <input className={s.productFormInput} type="date"
+                          value={profileForm.birthdate}
+                          onChange={e => setProfileForm(p => ({ ...p, birthdate: e.target.value }))} />
+                      </div>
+                      <div className={`${s.productFormField} ${s.settingsFullWidth}`}>
+                        <label className={s.productFormLabel}>Adresse</label>
+                        <input className={s.productFormInput}
+                          value={profileForm.address}
+                          onChange={e => setProfileForm(p => ({ ...p, address: e.target.value }))}
+                          placeholder="123 rue de la Paix, Montréal" />
+                      </div>
+                    </div>
+
+                    <div className={s.settingsCardFooter}>
+                      <button className={s.actionBtnSmall} onClick={saveVendorProfile} disabled={profileSaving}>
+                        {profileSaving ? 'Sauvegarde...' : 'Enregistrer le profil'}
+                      </button>
+                      {profileSaveSuccess && <span className={s.passSuccess}>✓ Profil mis à jour</span>}
+                    </div>
+                  </div>
+
+                  {/* ── Card : Compte ── */}
+                  <div className={s.settingsCard}>
+                    <div className={s.settingsCardTitleRow}>
+                      <h3 className={s.settingsCardTitle}>Informations du compte</h3>
+                      <p className={s.settingsCardSub}>Données de votre compte administrateur</p>
+                    </div>
+                    <ul className={s.accountInfoList}>
+                      <li className={s.accountInfoRow}>
+                        <span className={s.accountInfoLabel}>Adresse e-mail</span>
+                        <span className={s.accountInfoVal}>{user?.email || '—'}</span>
+                      </li>
+                      <li className={s.accountInfoRow}>
+                        <span className={s.accountInfoLabel}>Date d'inscription</span>
+                        <span className={s.accountInfoVal}>
+                          {user?.created_at
+                            ? new Date(user.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+                            : '—'}
+                        </span>
+                      </li>
+                      <li className={s.accountInfoRow}>
+                        <span className={s.accountInfoLabel}>Dernière connexion</span>
+                        <span className={s.accountInfoVal}>
+                          {user?.last_sign_in_at
+                            ? new Date(user.last_sign_in_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                            : '—'}
+                        </span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* ── Card : Sécurité ── */}
+                  <div className={s.settingsCard}>
+                    <div className={s.settingsCardTitleRow}>
+                      <h3 className={s.settingsCardTitle}>Sécurité</h3>
+                      <p className={s.settingsCardSub}>Modifier votre mot de passe</p>
+                    </div>
+                    <div className={s.settingsFormGrid}>
+                      <div className={s.productFormField}>
+                        <label className={s.productFormLabel}>Nouveau mot de passe</label>
+                        <input className={s.productFormInput} type="password"
+                          value={passForm.newPass}
+                          onChange={e => setPassForm(p => ({ ...p, newPass: e.target.value }))}
+                          placeholder="••••••••" autoComplete="new-password" />
+                      </div>
+                      <div className={s.productFormField}>
+                        <label className={s.productFormLabel}>Confirmer le mot de passe</label>
+                        <input className={s.productFormInput} type="password"
+                          value={passForm.confirmPass}
+                          onChange={e => setPassForm(p => ({ ...p, confirmPass: e.target.value }))}
+                          placeholder="••••••••" autoComplete="new-password" />
+                      </div>
+                    </div>
+                    <div className={s.settingsCardFooter}>
+                      <button className={s.actionBtnSmall} onClick={changePassword}
+                        disabled={passSaving || !passForm.newPass}>
+                        {passSaving ? 'Modification...' : 'Changer le mot de passe'}
+                      </button>
+                      {passMsg && (
+                        <span className={passMsg.ok ? s.passSuccess : s.passError}>{passMsg.text}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── Card : Signature ── */}
+                  <div className={`${s.settingsCard} ${s.settingsCardFull}`}>
+                    <div className={s.settingsCardTitleRow}>
+                      <h3 className={s.settingsCardTitle}>Signature automatique</h3>
+                      <p className={s.settingsCardSub}>Image générée pour vos messages et documents</p>
+                    </div>
+
+                    {/* Preview */}
+                    <div className={s.sigPreview}>
+                      {(customSigUrl || generatedSigUrl) ? (
+                        <img src={customSigUrl || generatedSigUrl} alt="Signature" className={s.sigPreviewImg} />
+                      ) : (
+                        <div className={s.sigPreviewEmpty}>
+                          <span>Aucune signature générée</span>
+                          <span className={s.sigPreviewEmptySub}>Cliquez sur Générer pour créer votre signature</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={s.sigActions}>
+                      <button className={s.actionBtnSmall} onClick={generateVendorSignature} disabled={sigGenerating}>
+                        {sigGenerating ? 'Génération...' : generatedSigUrl ? '↺ Regénérer' : '✦ Générer ma signature'}
+                      </button>
+                      {(customSigUrl || generatedSigUrl) && (
+                        <button
+                          className={`${s.actionBtnSmall} ${s.sigCopyBtn} ${sigCopied ? s.sigCopyDone : ''}`}
+                          onClick={async () => {
+                            await navigator.clipboard.writeText(customSigUrl || generatedSigUrl);
+                            setSigCopied(true);
+                            setTimeout(() => setSigCopied(false), 2000);
+                          }}>
+                          {sigCopied ? '✓ Copié !' : '⎘ Copier le lien'}
+                        </button>
+                      )}
+                      {customSigUrl && (
+                        <button className={`${s.actionBtnSmall} ${s.actionBtnRed}`} onClick={resetSignature}>
+                          Réinitialiser
+                        </button>
+                      )}
+                    </div>
+
+                    <div className={s.sigCustomSection}>
+                      <label className={s.productFormLabel}>Utiliser ma propre signature (URL d'image)</label>
+                      <div className={s.sigCustomRow}>
+                        <input
+                          className={s.productFormInput}
+                          value={customSigUrl}
+                          onChange={e => setCustomSigUrl(e.target.value)}
+                          placeholder="https://exemple.com/ma-signature.png"
+                        />
+                        {customSigUrl && (
+                          <button className={`${s.actionBtnSmall} ${s.actionBtnRed}`}
+                            onClick={() => setCustomSigUrl('')} title="Effacer">✕</button>
+                        )}
+                      </div>
+                      {customSigUrl && (
+                        <p className={s.sigCustomNote}>L'aperçu et le lien copié utilisent votre signature personnalisée.</p>
+                      )}
+                    </div>
+
+                    <div className={s.settingsCardFooter}>
+                      <button className={s.actionBtnSmall} onClick={saveVendorProfile} disabled={profileSaving}>
+                        {profileSaving ? 'Sauvegarde...' : 'Enregistrer les préférences de signature'}
+                      </button>
+                      {profileSaveSuccess && <span className={s.passSuccess}>✓ Sauvegardé</span>}
+                    </div>
+                  </div>
+
                 </div>
-                <p className={s.emptySettingsText}>Aucun paramètre avancé pour l'instant.</p>
-                <p className={s.emptySettingsSub}>Cette section sera complétée prochainement.</p>
-              </div>
+              )}
             </div>
           </>
         )}

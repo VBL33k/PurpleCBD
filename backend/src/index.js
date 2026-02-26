@@ -666,14 +666,14 @@ app.put('/api/products/:id', async (req, res) => {
   res.json({ product: data });
 });
 
-// Admin : désactiver un produit (soft delete)
+// Admin : supprimer définitivement un produit (hard delete)
 app.delete('/api/products/:id', async (req, res) => {
   const user = await requireAdmin(req, res);
   if (!user) return;
   const { id } = req.params;
   const { error } = await supabase
     .from('products')
-    .update({ active: false })
+    .delete()
     .eq('id', id);
   if (error) return res.status(500).json({ error: 'Erreur suppression produit.' });
   res.json({ ok: true });

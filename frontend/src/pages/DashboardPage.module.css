@@ -1916,8 +1916,8 @@
 
 /* ── Member detail popup ── */
 .memberDetailModal {
-  width: min(680px, 96vw);
-  max-height: 90vh;
+  width: min(860px, 96vw);
+  max-height: 92vh;
   overflow-y: auto;
 }
 
@@ -2049,4 +2049,235 @@
   .statNum { font-size: 26px; }
   .kpiRow { grid-template-columns: 1fr 1fr; }
   .kpiNum { font-size: 22px; }
+}
+
+/* ── Settings Tab ── */
+.settingsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.settingsCard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  transition: border-color 0.15s;
+}
+.settingsCard:hover { border-color: rgba(139, 92, 246, 0.3); }
+
+.settingsCardFull {
+  grid-column: 1 / -1;
+}
+
+.settingsCardTitleRow { display: flex; flex-direction: column; gap: 3px; }
+
+.settingsCardTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.settingsCardSub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.settingsCardFooter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.settingsFormGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.settingsFullWidth { grid-column: 1 / -1; }
+
+/* Profile avatar */
+.profileAvatarRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profileAvatarPreview {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.12);
+}
+
+.profileAvatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profileAvatarFallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #a78bfa;
+}
+
+.profileAvatarActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profileAvatarUploadBtn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Account info list */
+.accountInfoList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.accountInfoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  gap: 12px;
+}
+.accountInfoRow + .accountInfoRow { border-top: 1px solid var(--border); }
+
+.accountInfoLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.accountInfoVal {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 500;
+  text-align: right;
+}
+
+/* Password feedback */
+.passSuccess {
+  font-size: 12px;
+  color: #6ee7b7;
+  font-weight: 500;
+}
+
+.passError {
+  font-size: 12px;
+  color: #fca5a5;
+  font-weight: 500;
+}
+
+/* Signature */
+.sigPreview {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.02);
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sigPreviewImg {
+  width: 100%;
+  display: block;
+  max-height: 160px;
+  object-fit: contain;
+}
+
+.sigPreviewEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.sigPreviewEmptySub {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.sigActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sigCopyBtn { }
+
+.sigCopyDone {
+  color: #6ee7b7 !important;
+  border-color: rgba(110, 231, 183, 0.3) !important;
+}
+
+.sigCustomSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sigCustomRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sigCustomRow .productFormInput { flex: 1; }
+
+.sigCustomNote {
+  font-size: 11px;
+  color: #a78bfa;
+  margin: 0;
+}
+
+/* Icon-only action button */
+.actionBtnIcon {
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .settingsGrid { grid-template-columns: 1fr; }
+  .settingsCardFull { grid-column: 1; }
+  .settingsFormGrid { grid-template-columns: 1fr; }
 }
