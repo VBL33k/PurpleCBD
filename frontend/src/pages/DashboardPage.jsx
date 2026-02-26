@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import ChatModal from '../components/Modal/ChatModal';
+import PhysicalSaleModal from '../components/Modal/PhysicalSaleModal';
 import s from './DashboardPage.module.css';
 
 const SEEN_KEY = 'chat_seen_vendor';
@@ -106,6 +107,23 @@ function TrashIcon() {
     </svg>
   );
 }
+function SalesIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <path d="M16 10a4 4 0 01-8 0"/>
+    </svg>
+  );
+}
+function ExternalLinkIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+      <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+    </svg>
+  );
+}
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -132,6 +150,12 @@ export default function DashboardPage() {
   const [chatOrder, setChatOrder] = useState(null); // { id, ref }
   const [unreadCounts, setUnreadCounts] = useState({}); // { orderId: count }
   const chatOrderRef = useRef(null);
+
+  /* Physical Sales */
+  const [physicalSales, setPhysicalSales] = useState([]);
+  const [physicalSalesLoading, setPhysicalSalesLoading] = useState(false);
+  const [physicalSalesError, setPhysicalSalesError] = useState('');
+  const [newSaleModal, setNewSaleModal] = useState(false);
 
   /* Member actions */
   const [actionLoading, setActionLoading] = useState({});
@@ -261,9 +285,28 @@ export default function DashboardPage() {
     } finally { setOrdersLoading(false); }
   }
 
+  async function fetchPhysicalSales() {
+    setPhysicalSalesLoading(true);
+    setPhysicalSalesError('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setPhysicalSalesError('Non authentifié.'); setPhysicalSalesLoading(false); return; }
+      const res = await fetch(`${BACKEND_URL}/api/physical-sales`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setPhysicalSales(json.sales || []);
+    } catch (e) {
+      setPhysicalSalesError('Impossible de charger les ventes.');
+      console.error(e);
+    } finally { setPhysicalSalesLoading(false); }
+  }
+
   function handleTabChange(tab) {
     setActiveTab(tab);
     if (tab === 'orders') fetchOrders();
+    if (tab === 'sales') fetchPhysicalSales();
   }
 
   /* Admin token helper */
@@ -416,6 +459,10 @@ export default function DashboardPage() {
             <button className={`${s.navItem} ${activeTab === 'orders' ? s.navItemActive : ''}`} onClick={() => handleTabChange('orders')}>
               <OrdersIcon /> Commandes
               {pendingCount > 0 && <span className={s.navBadgeAlert}>{pendingCount}</span>}
+            </button>
+            <button className={`${s.navItem} ${activeTab === 'sales' ? s.navItemActive : ''}`} onClick={() => handleTabChange('sales')}>
+              <SalesIcon /> Ventes
+              {physicalSales.length > 0 && <span className={s.navBadge}>{physicalSales.length}</span>}
             </button>
             <button className={`${s.navItem} ${activeTab === 'settings' ? s.navItemActive : ''}`} onClick={() => handleTabChange('settings')}>
               <SettingsIcon /> Paramètres
@@ -729,6 +776,88 @@ export default function DashboardPage() {
           </>
         )}
 
+        {/* ── Ventes Physiques ── */}
+        {activeTab === 'sales' && (
+          <>
+            <header className={s.header}>
+              <div>
+                <h1 className={s.pageTitle}>Ventes</h1>
+                <p className={s.pageSubtitle}>{physicalSales.length} vente{physicalSales.length !== 1 ? 's' : ''} physique{physicalSales.length !== 1 ? 's' : ''}</p>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className={s.refreshBtn} onClick={fetchPhysicalSales} disabled={physicalSalesLoading} title="Actualiser">
+                  <RefreshIcon />
+                </button>
+              </div>
+            </header>
+            <div className={s.content}>
+              {/* Big new sale button */}
+              <button className={s.newSaleBtn} onClick={() => setNewSaleModal(true)}>
+                <span className={s.newSaleBtnIcon}>+</span>
+                <span className={s.newSaleBtnText}>Nouvelle vente physique</span>
+              </button>
+
+              {physicalSalesLoading && <p className={s.stateMsg}>Chargement...</p>}
+              {physicalSalesError && <p className={s.stateError}>{physicalSalesError}</p>}
+              {!physicalSalesLoading && !physicalSalesError && physicalSales.length === 0 && (
+                <div className={s.emptySales}>
+                  <div className={s.emptySalesIcon}><SalesIcon /></div>
+                  <p className={s.emptySalesText}>Aucune vente physique pour l'instant.</p>
+                  <p className={s.emptySalesSub}>Les ventes créées apparaîtront ici.</p>
+                </div>
+              )}
+              {!physicalSalesLoading && !physicalSalesError && physicalSales.length > 0 && (
+                <div className={s.salesList}>
+                  {physicalSales.map(sale => (
+                    <div key={sale.id} className={s.saleCard}>
+                      <div className={s.saleCardTop}>
+                        <div className={s.saleClientInfo}>
+                          <span className={s.saleClientName}>{sale.rp_name || sale.guest_name || 'Client anonyme'}</span>
+                          {sale.discord_id && <span className={s.saleAccountBadge}>✓ Compte client</span>}
+                        </div>
+                        <div className={s.saleMeta}>
+                          <span className={s.saleRef}>#{sale.id.slice(-6).toUpperCase()}</span>
+                          <span className={s.saleDate}>
+                            {new Date(sale.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {' '}
+                            {new Date(sale.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className={s.saleItems}>
+                        {(sale.items || []).map((item, i) => (
+                          <span key={i} className={s.saleItem}>{item.name} ×{item.qty}</span>
+                        ))}
+                      </div>
+
+                      <div className={s.saleFooter}>
+                        <div className={s.saleFooterLeft}>
+                          <span className={s.saleTotal}>${sale.total}</span>
+                          {(sale.points_earned || 0) > 0 && (
+                            <span className={s.salePoints}>⭐ +{sale.points_earned} pts</span>
+                          )}
+                          <span className={s.saleVendor}>par {sale.vendor_name || 'Vendeur'}</span>
+                        </div>
+                        <div className={s.saleFooterRight}>
+                          {sale.invoice_number && (
+                            <span className={s.saleInvoice}>{sale.invoice_number}</span>
+                          )}
+                          {sale.receipt_url && (
+                            <a href={sale.receipt_url} target="_blank" rel="noopener noreferrer" className={s.saleReceiptLink}>
+                              <ExternalLinkIcon /> Ticket
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
         {/* ── Paramètres ── */}
         {activeTab === 'settings' && (
           <>
@@ -751,6 +880,20 @@ export default function DashboardPage() {
         )}
 
       </main>
+
+      {/* ── Physical Sale Modal ── */}
+      {newSaleModal && (
+        <PhysicalSaleModal
+          onClose={() => setNewSaleModal(false)}
+          members={members}
+          vendorName={displayName}
+          getToken={getToken}
+          onSaleCreated={() => {
+            setNewSaleModal(false);
+            fetchPhysicalSales();
+          }}
+        />
+      )}
 
       {/* ── Confirm Modal ── */}
       {confirmModal && (

@@ -381,11 +381,15 @@ app.post('/api/orders/loyalty', async (req, res) => {
   res.json({ ok: true, orderId: data.id, pointsCost });
 });
 
-// Liste toutes les commandes (admin)
+// Liste toutes les commandes en ligne (admin) — exclut les ventes physiques
 app.get('/api/orders', async (req, res) => {
   const user = await requireAdmin(req, res);
   if (!user) return;
-  const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .neq('order_type', 'physical')
+    .order('created_at', { ascending: false });
   if (error) return res.status(500).json({ error: 'Erreur récupération commandes.' });
   res.json({ orders: data });
 });
@@ -476,8 +480,124 @@ app.patch('/api/orders/:id/status', async (req, res) => {
 // ── 404 ──
 app.use((_req, res) => res.status(404).json({ error: 'Route non trouvée.' }));
 
+// ── Physical Sales ──
+
+// Créer une vente physique (admin/vendeur)
+app.post('/api/physical-sales', async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+
+  const { clientType, discordId, clientName, items, total, invoiceNumber, receiptBase64 } = req.body;
+  if (!items?.length || !total || !invoiceNumber) {
+    return res.status(400).json({ error: 'Données manquantes.' });
+  }
+
+  const vendorName = user.email?.split('@')[0] || 'Vendeur';
+  const vendorUserId = user.id;
+  const pointsEarned = clientType === 'account' && discordId ? total : 0;
+
+  // Upload receipt to Supabase Storage
+  let receiptUrl = null;
+  if (receiptBase64) {
+    try {
+      const base64Data = receiptBase64.replace(/^data:image\/png;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      const filename = `${invoiceNumber}.png`;
+      const { error: uploadError } = await supabase.storage
+        .from('receipts')
+        .upload(filename, buffer, { contentType: 'image/png', upsert: true });
+      if (!uploadError) {
+        const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(filename);
+        receiptUrl = urlData.publicUrl;
+      } else {
+        console.error('Receipt upload error:', uploadError);
+      }
+    } catch (e) {
+      console.error('Receipt processing error:', e);
+    }
+  }
+
+  // Create order record
+  const { data, error } = await supabase.from('orders').insert({
+    discord_id: clientType === 'account' ? (discordId || null) : null,
+    username: clientType === 'account' ? clientName : null,
+    rp_name: clientName,
+    items,
+    total,
+    delivery_type: 'pickup',
+    status: 'picked_up',
+    order_type: 'physical',
+    points_earned: pointsEarned,
+    points_cost: 0,
+    vendor_name: vendorName,
+    vendor_user_id: vendorUserId,
+    guest_name: clientType === 'guest' ? clientName : null,
+    receipt_url: receiptUrl,
+    invoice_number: invoiceNumber,
+  }).select('id').single();
+
+  if (error) { console.error('Physical sale insert error:', error); return res.status(500).json({ error: 'Erreur création vente.' }); }
+
+  // Credit loyalty points immediately
+  if (clientType === 'account' && discordId && pointsEarned > 0) {
+    const { data: member } = await supabase.from('members').select('loyalty_points').eq('discord_id', discordId).maybeSingle();
+    if (member) {
+      await supabase.from('members')
+        .update({ loyalty_points: (member.loyalty_points ?? 0) + pointsEarned, updated_at: new Date().toISOString() })
+        .eq('discord_id', discordId);
+    }
+  }
+
+  // Discord notification
+  const ref = data.id.slice(-6).toUpperCase();
+  const itemsStr = items.map(i => `**${i.name}** ×${i.qty}`).join('\n');
+  const embedFields = [
+    { name: '🏷️ Réf.',      value: `\`#${ref}\``,       inline: true },
+    { name: '💰 Total',     value: `**$${total}**`,      inline: true },
+    { name: '📄 Facture',   value: `\`${invoiceNumber}\``, inline: true },
+    { name: '🧑‍💼 Vendeur', value: vendorName,            inline: true },
+    { name: '👤 Client',    value: clientName || 'Anonyme', inline: true },
+    { name: '📦 Articles',  value: itemsStr,              inline: false },
+  ];
+  if (pointsEarned > 0) embedFields.push({ name: '⭐ Points crédités', value: `**+${pointsEarned} pts**`, inline: true });
+  if (receiptUrl) embedFields.push({ name: '🧾 Ticket', value: `[Voir le ticket](${receiptUrl})`, inline: false });
+
+  sendDiscordEmbed({
+    title: '🏪 Nouvelle Vente Physique',
+    color: 0x8B5CF6,
+    fields: embedFields,
+  }).catch(() => {});
+
+  res.json({ ok: true, orderId: data.id, receiptUrl, invoiceNumber });
+});
+
+// Lister les ventes physiques (admin/vendeur)
+app.get('/api/physical-sales', async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  // TODO: filter by vendor_user_id = user.id once per-vendor accounts exist
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('order_type', 'physical')
+    .order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: 'Erreur récupération ventes.' });
+  res.json({ sales: data });
+});
+
 app.listen(PORT, async () => {
   console.log(`Purple CBD API running on port ${PORT}`);
+  // ── Auto-init receipts storage bucket ──
+  try {
+    await supabase.storage.createBucket('receipts', { public: true, fileSizeLimit: 5 * 1024 * 1024 });
+    console.log('✓ Storage bucket "receipts" created');
+  } catch (e) {
+    if (!e.message?.includes('already exists') && !e.message?.includes('duplicate')) {
+      console.log('Storage bucket note:', e.message || e);
+    } else {
+      console.log('✓ Storage bucket "receipts" already exists');
+    }
+  }
   // ── Auto-check schema ──
   const { error } = await supabase.from('members').select('banned').limit(0);
   if (error?.code === '42703') {
