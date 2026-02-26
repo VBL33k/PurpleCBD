@@ -288,9 +288,8 @@ async function _loadImg(src) {
   });
 }
 
-async function generateSignatureBlob(vendorName, avatarUrl) {
-  const LOGO_URL = 'https://i.imgur.com/CbcU0Qp.png';
-  const W = 500, H = 150, SCALE = 2;
+async function generateSignatureBlob(vendorName, role) {
+  const W = 480, H = 160, SCALE = 2;
   const canvas = document.createElement('canvas');
   canvas.width  = W * SCALE;
   canvas.height = H * SCALE;
@@ -299,84 +298,94 @@ async function generateSignatureBlob(vendorName, avatarUrl) {
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
 
-  // Background gradient
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, '#0c0618');
-  bg.addColorStop(1, '#140a2a');
-  ctx.fillStyle = bg;
+  // White background
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
-  // Left purple accent bar
-  ctx.fillStyle = '#8b5cf6';
-  ctx.fillRect(0, 0, 4, H);
+  // Load cursive font (Great Vibes — elegant signature style)
+  let fontLoaded = false;
+  try {
+    const ff = new FontFace(
+      'GreatVibes',
+      'url(https://fonts.gstatic.com/s/greatvibes/v19/RWmMoKWR9v4ksMfaWd_JN-XCg6UKDXlCZA.woff2)'
+    );
+    await ff.load();
+    document.fonts.add(ff);
+    fontLoaded = true;
+  } catch (e) { /* fallback to system cursive */ }
 
-  // Bottom bar
-  const bar = ctx.createLinearGradient(0, 0, W, 0);
-  bar.addColorStop(0, '#8b5cf6');
-  bar.addColorStop(1, '#6d28d9');
-  ctx.fillStyle = bar;
-  ctx.fillRect(0, H - 3, W, 3);
-
-  // Logo (left side)
-  const logo = await _loadImg(LOGO_URL);
-  if (logo) {
-    ctx.save();
-    ctx.globalAlpha = 0.92;
-    ctx.drawImage(logo, 18, (H - 60) / 2, 60, 60);
-    ctx.restore();
-  }
-
-  // Avatar circle (right side, optional)
-  let avatarX = W - 20;
-  if (avatarUrl) {
-    const av = await _loadImg(avatarUrl);
-    if (av) {
-      const r = 32, cx = W - 20 - r, cy = H / 2;
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.drawImage(av, cx - r, cy - r, r * 2, r * 2);
-      ctx.restore();
-      // Border
-      ctx.strokeStyle = '#8b5cf6';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.stroke();
-      avatarX = cx - r - 12;
-    }
-  }
-
-  // Divider line
-  ctx.strokeStyle = 'rgba(139,92,246,0.35)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(90, 20);
-  ctx.lineTo(90, H - 20);
-  ctx.stroke();
-
-  // Vendor name
-  const maxTextW = avatarX - 110;
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `700 22px Georgia, serif`;
+  const PAD = 28;
   const name = vendorName || 'Purple CBD';
-  // Truncate if needed
-  let displayN = name;
-  while (ctx.measureText(displayN).width > maxTextW && displayN.length > 3) {
-    displayN = displayN.slice(0, -1);
+
+  // ── Name in cursive ──
+  let fontSize = 82;
+  ctx.font = `normal ${fontSize}px ${fontLoaded ? "'GreatVibes'" : 'cursive'}, cursive`;
+  let textW = ctx.measureText(name).width;
+  // Scale down if too wide
+  while (textW > W - PAD * 2 && fontSize > 32) {
+    fontSize -= 4;
+    ctx.font = `normal ${fontSize}px ${fontLoaded ? "'GreatVibes'" : 'cursive'}, cursive`;
+    textW = ctx.measureText(name).width;
   }
-  ctx.fillText(displayN, 106, H / 2 - 4);
+  const nameBaseY = 102;
+  ctx.fillStyle = '#1a1530';
+  ctx.fillText(name, PAD, nameBaseY);
 
-  // Role
-  ctx.fillStyle = '#a78bfa';
-  ctx.font = '400 12px "Helvetica Neue", Arial, sans-serif';
-  ctx.fillText('Vendeur agréé • Purple CBD', 106, H / 2 + 17);
+  // ── Flourish underline (bezier swash) ──
+  const swashStartX = PAD;
+  const swashEndX   = PAD + textW + 38;
+  const swashY      = nameBaseY + 10;
+  ctx.save();
+  ctx.strokeStyle = '#1a1530';
+  ctx.lineWidth   = 1.4;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+  ctx.beginPath();
+  ctx.moveTo(swashStartX, swashY - 2);
+  ctx.bezierCurveTo(
+    swashStartX + textW * 0.25, swashY + 10,
+    swashStartX + textW * 0.65, swashY - 4,
+    swashEndX - 16, swashY + 14
+  );
+  // Small terminal loop
+  ctx.bezierCurveTo(swashEndX - 8, swashY + 18, swashEndX + 4, swashY + 12, swashEndX, swashY + 6);
+  ctx.stroke();
+  ctx.restore();
 
-  // Tagline
-  ctx.fillStyle = 'rgba(255,255,255,0.28)';
-  ctx.font = '400 10px "Helvetica Neue", Arial, sans-serif';
-  ctx.fillText('purplecbd.com', 106, H / 2 + 36);
+  // ── Thin purple separator ──
+  const sepY = swashY + 22;
+  ctx.save();
+  const grad = ctx.createLinearGradient(PAD, 0, PAD + 220, 0);
+  grad.addColorStop(0, 'rgba(109,40,217,0.7)');
+  grad.addColorStop(1, 'rgba(109,40,217,0)');
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(PAD, sepY);
+  ctx.lineTo(PAD + 220, sepY);
+  ctx.stroke();
+  ctx.restore();
+
+  // ── Role text (spaced small caps) ──
+  const roleStr = (role || 'Administrateur').toUpperCase();
+  ctx.save();
+  ctx.fillStyle = '#7c3aed';
+  ctx.font = '500 10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+  let rx = PAD;
+  for (const char of roleStr) {
+    ctx.fillText(char, rx, sepY + 16);
+    rx += ctx.measureText(char).width + 1.8;
+  }
+  ctx.restore();
+
+  // ── "Purple CBD" brand (right side) ──
+  ctx.save();
+  ctx.font = '400 10px "Helvetica Neue", Helvetica, Arial, sans-serif';
+  ctx.fillStyle = 'rgba(139,92,246,0.45)';
+  const brand = 'Purple CBD';
+  const brandW = ctx.measureText(brand).width;
+  ctx.fillText(brand, W - PAD - brandW, sepY + 16);
+  ctx.restore();
 
   return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
 }
@@ -431,7 +440,7 @@ export default function DashboardPage() {
   const [productImgUploading, setProductImgUploading] = useState(false);
 
   /* Vendor profile (Settings tab) */
-  const [profileForm, setProfileForm]           = useState({ displayName: '', birthdate: '', address: '', avatarUrl: '' });
+  const [profileForm, setProfileForm]           = useState({ displayName: '', birthdate: '', address: '', avatarUrl: '', role: 'Administrateur' });
   const [profileLoading, setProfileLoading]     = useState(false);
   const [profileSaving, setProfileSaving]       = useState(false);
   const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
@@ -846,6 +855,7 @@ export default function DashboardPage() {
         birthdate:   meta.birthdate   || '',
         address:     meta.address     || '',
         avatarUrl:   meta.avatar_url  || '',
+        role:        meta.role        || 'Administrateur',
       });
       setCustomSigUrl(meta.signature_url     || '');
       setGeneratedSigUrl(meta.signature_gen_url || '');
@@ -862,6 +872,7 @@ export default function DashboardPage() {
           birthdate:         profileForm.birthdate,
           address:           profileForm.address,
           avatar_url:        profileForm.avatarUrl,
+          role:              profileForm.role,
           signature_url:     customSigUrl || generatedSigUrl,
           signature_gen_url: generatedSigUrl,
         },
@@ -903,7 +914,7 @@ export default function DashboardPage() {
     try {
       const blob = await generateSignatureBlob(
         profileForm.displayName || displayName,
-        profileForm.avatarUrl || null,
+        profileForm.role || 'Administrateur',
       );
       const reader = new FileReader();
       const base64 = await new Promise((resolve, reject) => {
@@ -1643,12 +1654,25 @@ export default function DashboardPage() {
                           placeholder="Votre prénom ou pseudo" />
                       </div>
                       <div className={s.productFormField}>
+                        <label className={s.productFormLabel}>Rôle</label>
+                        <select className={s.productFormInput}
+                          value={profileForm.role}
+                          onChange={e => setProfileForm(p => ({ ...p, role: e.target.value }))}>
+                          <option value="Administrateur">Administrateur</option>
+                          <option value="CEO">CEO</option>
+                          <option value="CO-CEO">CO-CEO</option>
+                          <option value="Gérant">Gérant</option>
+                          <option value="Vendeur">Vendeur</option>
+                          <option value="Autre">Autre</option>
+                        </select>
+                      </div>
+                      <div className={s.productFormField}>
                         <label className={s.productFormLabel}>Date de naissance</label>
                         <input className={s.productFormInput} type="date"
                           value={profileForm.birthdate}
                           onChange={e => setProfileForm(p => ({ ...p, birthdate: e.target.value }))} />
                       </div>
-                      <div className={`${s.productFormField} ${s.settingsFullWidth}`}>
+                      <div className={s.productFormField}>
                         <label className={s.productFormLabel}>Adresse</label>
                         <input className={s.productFormInput}
                           value={profileForm.address}
