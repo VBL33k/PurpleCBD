@@ -524,12 +524,16 @@ export default function ClientPage() {
                 {/* Orders list */}
                 <div className={s.ordersList}>
                   {myOrders.map(order => {
+                    const isPhysical = order.order_type === 'physical';
                     const st = STATUS_LABELS[order.status] || STATUS_LABELS.pending;
                     return (
-                      <div key={order.id} className={s.orderCard}>
+                      <div key={order.id} className={`${s.orderCard} ${isPhysical ? s.orderCardPhysical : ''}`}>
                         <div className={s.orderCardHeader}>
                           <div className={s.orderMeta}>
                             <span className={s.orderId}>#{order.id.slice(-6).toUpperCase()}</span>
+                            {isPhysical && (
+                              <span className={s.physicalBadge}>🏪 Vente Physique</span>
+                            )}
                             <span className={s.orderDate}>{new Date(order.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                           </div>
                           <span className={s.orderStatus} style={{ color: st.color, borderColor: st.color + '33', background: st.color + '14' }}>
@@ -542,23 +546,36 @@ export default function ClientPage() {
                           ))}
                         </div>
                         <div className={s.orderFooter}>
-                          <span className={s.orderType}>
-                            {order.delivery_type === 'delivery' ? <><TruckIcon /> Livraison</> : <><StoreIcon /> Retrait en magasin</>}
-                          </span>
+                          {isPhysical ? (
+                            <span className={s.orderType}>
+                              🧑‍💼 Vendeur : {order.vendor_name || 'Équipe Purple CBD'}
+                            </span>
+                          ) : (
+                            <span className={s.orderType}>
+                              {order.delivery_type === 'delivery' ? <><TruckIcon /> Livraison</> : <><StoreIcon /> Retrait en magasin</>}
+                            </span>
+                          )}
                           <div className={s.orderFooterRight}>
                             <span className={s.orderTotal}>${order.total}</span>
-                            <button
-                              className={`${s.orderChatBtn} ${unreadCounts[order.id] ? s.orderChatBtnUnread : ''}`}
-                              onClick={() => openChat(order.id)}
-                            >
-                              {unreadCounts[order.id] ? <span className={s.chatUnreadDot} /> : null}
-                              <ChatIcon /> Chat
-                              {unreadCounts[order.id] > 0 && (
-                                <span style={{ fontSize: '10px', fontWeight: 700, marginLeft: 2 }}>
-                                  {unreadCounts[order.id]}
-                                </span>
-                              )}
-                            </button>
+                            {isPhysical && order.receipt_url && (
+                              <a href={order.receipt_url} target="_blank" rel="noopener noreferrer" className={s.receiptBtn}>
+                                🧾 Ticket
+                              </a>
+                            )}
+                            {!isPhysical && (
+                              <button
+                                className={`${s.orderChatBtn} ${unreadCounts[order.id] ? s.orderChatBtnUnread : ''}`}
+                                onClick={() => openChat(order.id)}
+                              >
+                                {unreadCounts[order.id] ? <span className={s.chatUnreadDot} /> : null}
+                                <ChatIcon /> Chat
+                                {unreadCounts[order.id] > 0 && (
+                                  <span style={{ fontSize: '10px', fontWeight: 700, marginLeft: 2 }}>
+                                    {unreadCounts[order.id]}
+                                  </span>
+                                )}
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>

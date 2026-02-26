@@ -1128,6 +1128,233 @@
   border-color: rgba(239, 68, 68, 0.55);
 }
 
+/* ── New Sale Button ── */
+.newSaleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 18px 24px;
+  background: linear-gradient(135deg, rgba(109, 40, 217, 0.18) 0%, rgba(139, 92, 246, 0.1) 100%);
+  border: 2px dashed rgba(139, 92, 246, 0.4);
+  border-radius: 14px;
+  color: #a78bfa;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+
+.newSaleBtn:hover {
+  background: linear-gradient(135deg, rgba(109, 40, 217, 0.28) 0%, rgba(139, 92, 246, 0.18) 100%);
+  border-color: rgba(139, 92, 246, 0.65);
+  color: #c4b5fd;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.15);
+}
+
+.newSaleBtnIcon {
+  font-size: 24px;
+  font-weight: 300;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.newSaleBtnText {
+  font-size: 14px;
+}
+
+/* ── Sales List ── */
+.salesList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.saleCard {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.2s;
+}
+
+.saleCard:hover {
+  border-color: rgba(139, 92, 246, 0.2);
+}
+
+.saleCardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.saleClientInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.saleClientName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--white);
+}
+
+.saleAccountBadge {
+  font-size: 10px;
+  font-weight: 600;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 10px;
+  padding: 2px 8px;
+}
+
+.saleMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.saleRef {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.35);
+  font-family: monospace;
+}
+
+.saleDate {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.saleItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.saleItem {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 6px;
+  padding: 3px 9px;
+}
+
+.saleFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.saleFooterLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.saleTotal {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.salePoints {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+  border-radius: 10px;
+  padding: 2px 8px;
+}
+
+.saleVendor {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.saleFooterRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.saleInvoice {
+  font-size: 10px;
+  font-family: monospace;
+  color: rgba(139, 92, 246, 0.7);
+}
+
+.saleReceiptLink {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #a78bfa;
+  text-decoration: none;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 6px;
+  padding: 4px 10px;
+  transition: all 0.15s;
+}
+
+.saleReceiptLink:hover {
+  background: rgba(139, 92, 246, 0.2);
+  color: #c4b5fd;
+}
+
+/* ── Empty sales ── */
+.emptySales {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 0;
+  text-align: center;
+}
+
+.emptySalesIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.2);
+  margin-bottom: 4px;
+}
+
+.emptySalesText {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0;
+}
+
+.emptySalesSub {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.2);
+  margin: 0;
+}
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .sidebar { display: none; }
