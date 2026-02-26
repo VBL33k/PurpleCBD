@@ -124,6 +124,22 @@ function ExternalLinkIcon() {
     </svg>
   );
 }
+function CatalogueIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="7" height="7" rx="1"/><rect x="15" y="3" width="7" height="7" rx="1"/>
+      <rect x="2" y="14" width="7" height="7" rx="1"/><rect x="15" y="14" width="7" height="7" rx="1"/>
+    </svg>
+  );
+}
+function ImgIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+      <polyline points="21 15 16 10 5 21"/>
+    </svg>
+  );
+}
 
 /* ── Chart Components ── */
 
@@ -300,6 +316,16 @@ export default function DashboardPage() {
   const [salesSearch, setSalesSearch]         = useState('');
   const [salesDateFilter, setSalesDateFilter] = useState('');
 
+  /* Catalogue */
+  const [products, setProducts]               = useState([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productForm, setProductForm]         = useState(null);
+  const [productSaving, setProductSaving]     = useState(false);
+  const [productImgUploading, setProductImgUploading] = useState(false);
+
+  /* Member detail */
+  const [memberDetail, setMemberDetail] = useState(null);
+
   /* Member actions */
   const [actionLoading, setActionLoading] = useState({});
   const [editPoints, setEditPoints]       = useState(null);  // { discordId, value }
@@ -345,7 +371,7 @@ export default function DashboardPage() {
   }
 
   useEffect(() => { fetchSettings(); }, []);
-  useEffect(() => { fetchOrders(); fetchPhysicalSales(); }, []);
+  useEffect(() => { fetchOrders(); fetchPhysicalSales(); fetchProducts(); }, []);
 
 
   /* Load orders */
@@ -466,8 +492,9 @@ export default function DashboardPage() {
 
   function handleTabChange(tab) {
     setActiveTab(tab);
-    if (tab === 'orders' || tab === 'dashboard') fetchOrders();
-    if (tab === 'sales'  || tab === 'dashboard') fetchPhysicalSales();
+    if (tab === 'orders'    || tab === 'dashboard') fetchOrders();
+    if (tab === 'sales'     || tab === 'dashboard') fetchPhysicalSales();
+    if (tab === 'catalogue' || tab === 'dashboard') fetchProducts();
   }
 
   /* Admin token helper */
@@ -578,7 +605,99 @@ export default function DashboardPage() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    navigate('/'); // ← landing page
+    navigate('/');
+  }
+
+  /* ── Catalogue ── */
+  async function fetchProducts() {
+    setProductsLoading(true);
+    try {
+      const token = await getToken();
+      const res = await fetch(`${BACKEND_URL}/api/products/all`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setProducts(json.products || []);
+    } catch (e) { console.error(e); }
+    finally { setProductsLoading(false); }
+  }
+
+  async function saveProduct(form) {
+    setProductSaving(true);
+    try {
+      const token  = await getToken();
+      const method = form.id ? 'PUT' : 'POST';
+      const url    = form.id ? `${BACKEND_URL}/api/products/${form.id}` : `${BACKEND_URL}/api/products`;
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error('Save failed');
+      await fetchProducts();
+      setProductForm(null);
+    } catch (e) { console.error(e); }
+    finally { setProductSaving(false); }
+  }
+
+  async function softDeleteProduct(id) {
+    try {
+      const token = await getToken();
+      await fetch(`${BACKEND_URL}/api/products/${id}`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+      });
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, active: false } : p));
+    } catch (e) { console.error(e); }
+  }
+
+  async function reactivateProduct(prod) {
+    try {
+      const token = await getToken();
+      await fetch(`${BACKEND_URL}/api/products/${prod.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ active: true }),
+      });
+      setProducts(prev => prev.map(p => p.id === prod.id ? { ...p, active: true } : p));
+    } catch (e) { console.error(e); }
+  }
+
+  async function uploadProductImage(file) {
+    setProductImgUploading(true);
+    try {
+      const reader = new FileReader();
+      const base64 = await new Promise((resolve, reject) => {
+        reader.onload  = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const token = await getToken();
+      const res = await fetch(`${BACKEND_URL}/api/upload-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ imageBase64: base64 }),
+      });
+      const data = await res.json();
+      return data.url || null;
+    } catch (e) { console.error(e); return null; }
+    finally { setProductImgUploading(false); }
+  }
+
+  /* ── Member detail ── */
+  async function openMemberDetail(member) {
+    setMemberDetail({ member, orders: [], loading: true });
+    try {
+      const token = await getToken();
+      const res = await fetch(`${BACKEND_URL}/api/members/${member.discord_id}/orders`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      setMemberDetail(prev => prev ? { ...prev, orders: json.orders || [], loading: false } : null);
+    } catch (e) {
+      console.error(e);
+      setMemberDetail(prev => prev ? { ...prev, loading: false } : null);
+    }
   }
 
   const displayName = user?.email?.split('@')[0] ?? 'Admin';
@@ -643,6 +762,10 @@ export default function DashboardPage() {
             <button className={`${s.navItem} ${activeTab === 'sales' ? s.navItemActive : ''}`} onClick={() => handleTabChange('sales')}>
               <SalesIcon /> Ventes
               {physicalSales.length > 0 && <span className={s.navBadge}>{physicalSales.length}</span>}
+            </button>
+            <button className={`${s.navItem} ${activeTab === 'catalogue' ? s.navItemActive : ''}`} onClick={() => handleTabChange('catalogue')}>
+              <CatalogueIcon /> Catalogue
+              {products.filter(p => p.active).length > 0 && <span className={s.navBadge}>{products.filter(p => p.active).length}</span>}
             </button>
             <button className={`${s.navItem} ${activeTab === 'settings' ? s.navItemActive : ''}`} onClick={() => handleTabChange('settings')}>
               <SettingsIcon /> Paramètres
@@ -810,7 +933,7 @@ export default function DashboardPage() {
                       {members.length === 0 ? (
                         <tr><td colSpan={5} className={s.emptyRow}>Aucun membre pour l'instant.</td></tr>
                       ) : members.map(m => (
-                        <tr key={m.discord_id} className={m.banned ? s.rowBanned : ''}>
+                        <tr key={m.discord_id} className={`${m.banned ? s.rowBanned : ''} ${s.clickableRow}`} onClick={() => openMemberDetail(m)}>
                           <td>
                             <div className={s.memberCell}>
                               {m.avatar_url
@@ -822,7 +945,7 @@ export default function DashboardPage() {
                             </div>
                           </td>
                           <td className={s.rpName}>{m.rp_name || '—'}</td>
-                          <td>
+                          <td onClick={e => e.stopPropagation()}>
                             {editPoints?.discordId === m.discord_id ? (
                               <div className={s.pointsEditRow}>
                                 <input
@@ -843,23 +966,23 @@ export default function DashboardPage() {
                             )}
                           </td>
                           <td className={s.date}>{m.joined_at ? new Date(m.joined_at).toLocaleDateString('fr-FR') : '—'}</td>
-                          <td>
+                          <td onClick={e => e.stopPropagation()}>
                             <div className={s.memberActions}>
                               <button
                                 className={s.actionBtnSmall}
-                                onClick={() => setConfirmModal({ label: `Réinitialiser ${m.username || m.rp_name} ?`, onConfirm: () => resetMember(m.discord_id) })}
+                                onClick={e => { e.stopPropagation(); setConfirmModal({ label: `Réinitialiser ${m.username || m.rp_name} ?`, onConfirm: () => resetMember(m.discord_id) }); }}
                                 disabled={actionLoading[m.discord_id]}
                               >Reset</button>
                               {m.banned ? (
                                 <button
                                   className={`${s.actionBtnSmall} ${s.actionBtnGreen}`}
-                                  onClick={() => saveBan(m.discord_id, false, null)}
+                                  onClick={e => { e.stopPropagation(); saveBan(m.discord_id, false, null); }}
                                   disabled={actionLoading[m.discord_id]}
                                 >Débannir</button>
                               ) : (
                                 <button
                                   className={`${s.actionBtnSmall} ${s.actionBtnRed}`}
-                                  onClick={() => { setBanModal({ discordId: m.discord_id, username: m.username }); setBanMessage(''); }}
+                                  onClick={e => { e.stopPropagation(); setBanModal({ discordId: m.discord_id, username: m.username }); setBanMessage(''); }}
                                   disabled={actionLoading[m.discord_id]}
                                 >Bannir</button>
                               )}
@@ -990,18 +1113,20 @@ export default function DashboardPage() {
                               onClick={() => setConfirmModal({ label: `Supprimer la commande #${order.id.slice(-6).toUpperCase()} ?`, onConfirm: () => deleteOrder(order.id) })}
                               title="Supprimer la commande"
                             ><TrashIcon /></button>
-                            <button
-                              className={`${s.chatBtn} ${unreadCounts[order.id] ? s.chatBtnUnread : ''}`}
-                              onClick={() => openChat(order.id)}
-                            >
-                              {unreadCounts[order.id] ? <span className={s.chatUnreadDot} /> : null}
-                              <ChatIcon /> Contacter
-                              {unreadCounts[order.id] > 0 && (
-                                <span style={{ fontSize: '10px', fontWeight: 700, marginLeft: 2 }}>
-                                  {unreadCounts[order.id]}
-                                </span>
-                              )}
-                            </button>
+                            {!['delivered', 'picked_up', 'cancelled'].includes(order.status) && (
+                              <button
+                                className={`${s.chatBtn} ${unreadCounts[order.id] ? s.chatBtnUnread : ''}`}
+                                onClick={() => openChat(order.id)}
+                              >
+                                {unreadCounts[order.id] ? <span className={s.chatUnreadDot} /> : null}
+                                <ChatIcon /> Contacter
+                                {unreadCounts[order.id] > 0 && (
+                                  <span style={{ fontSize: '10px', fontWeight: 700, marginLeft: 2 }}>
+                                    {unreadCounts[order.id]}
+                                  </span>
+                                )}
+                              </button>
+                            )}
                           </div>
                           <select
                             className={s.statusDropdown}
@@ -1145,6 +1270,67 @@ export default function DashboardPage() {
           </>
         )}
 
+        {/* ── Catalogue ── */}
+        {activeTab === 'catalogue' && (
+          <>
+            <header className={s.header}>
+              <div>
+                <h1 className={s.pageTitle}>Catalogue</h1>
+                <p className={s.pageSubtitle}>{products.filter(p => p.active).length} produit{products.filter(p => p.active).length !== 1 ? 's' : ''} actif{products.filter(p => p.active).length !== 1 ? 's' : ''}</p>
+              </div>
+              <button className={s.refreshBtn} onClick={fetchProducts} disabled={productsLoading} title="Actualiser"><RefreshIcon /></button>
+            </header>
+            <div className={s.content}>
+              <button className={s.newSaleBtn} onClick={() => setProductForm({ name: '', description: '', strain: '', badge: '', tags: [], price: 150, loyalty_price: 100, image_url: '', active: true })}>
+                <span className={s.newSaleBtnIcon}>+</span>
+                <span className={s.newSaleBtnText}>Nouveau produit</span>
+              </button>
+
+              {productsLoading && <p className={s.stateMsg}>Chargement...</p>}
+              {!productsLoading && products.length === 0 && (
+                <p className={s.stateMsg}>Aucun produit — cliquez sur + pour en ajouter.</p>
+              )}
+              {!productsLoading && products.length > 0 && (
+                <div className={s.productGrid}>
+                  {products.map(p => (
+                    <div key={p.id} className={`${s.productCard} ${!p.active ? s.productCardInactive : ''}`}>
+                      {p.image_url ? (
+                        <img src={p.image_url} alt={p.name} className={s.productCardImg} />
+                      ) : (
+                        <div className={s.productCardImgPlaceholder}><ImgIcon /></div>
+                      )}
+                      <div className={s.productCardBody}>
+                        <div className={s.productCardNameRow}>
+                          <span className={s.productCardName}>{p.name}</span>
+                          {!p.active && <span className={s.productCardInactiveBadge}>Inactif</span>}
+                        </div>
+                        {p.strain && <span className={s.productCardStrain}>{p.strain}</span>}
+                        <div className={s.productCardPrices}>
+                          <span className={s.productCardPrice}>${p.price}</span>
+                          <span className={s.productCardLoyalty}>{p.loyalty_price} pts</span>
+                        </div>
+                      </div>
+                      <div className={s.productCardActions}>
+                        <button className={s.actionBtnSmall} onClick={() => setProductForm({ ...p, tags: p.tags || [] })}>Modifier</button>
+                        {p.active ? (
+                          <button className={`${s.actionBtnSmall} ${s.actionBtnRed}`}
+                            onClick={() => setConfirmModal({ label: `Désactiver "${p.name}" ?`, onConfirm: () => softDeleteProduct(p.id) })}>
+                            Désactiver
+                          </button>
+                        ) : (
+                          <button className={`${s.actionBtnSmall} ${s.actionBtnGreen}`} onClick={() => reactivateProduct(p)}>
+                            Réactiver
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
         {/* ── Paramètres ── */}
         {activeTab === 'settings' && (
           <>
@@ -1195,11 +1381,184 @@ export default function DashboardPage() {
           members={members}
           vendorName={displayName}
           getToken={getToken}
+          products={products.filter(p => p.active)}
           onSaleCreated={() => {
             setNewSaleModal(false);
             fetchPhysicalSales();
           }}
         />
+      )}
+
+      {/* ── Member Detail Popup ── */}
+      {memberDetail && (
+        <div className={s.modalOverlay} onClick={e => { if (e.target === e.currentTarget) setMemberDetail(null); }}>
+          <div className={`${s.modal} ${s.memberDetailModal}`}>
+            <div className={s.memberDetailHead}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {memberDetail.member.avatar_url
+                  ? <img src={memberDetail.member.avatar_url} alt="" className={s.memberDetailAvatar} />
+                  : <div className={s.memberAvatarFallback}>{(memberDetail.member.username || '?')[0].toUpperCase()}</div>
+                }
+                <div>
+                  <h3 className={s.modalTitle} style={{ marginBottom: 2 }}>
+                    {memberDetail.member.rp_name || memberDetail.member.username || '—'}
+                  </h3>
+                  {memberDetail.member.rp_name && (
+                    <span className={s.memberDetailSub}>@{memberDetail.member.username}</span>
+                  )}
+                  {memberDetail.member.banned && <span className={s.bannedBadge} style={{ marginLeft: 8 }}>Banni</span>}
+                </div>
+              </div>
+              <button className={s.receiptLightboxClose} onClick={() => setMemberDetail(null)}>✕</button>
+            </div>
+
+            <div className={s.memberDetailStats}>
+              <div className={s.memberDetailStat}>
+                <span className={s.memberDetailStatNum}>
+                  ${memberDetail.orders.filter(o => o.order_type !== 'loyalty').reduce((acc, o) => acc + (o.total || 0), 0)}
+                </span>
+                <span className={s.memberDetailStatLabel}>Dépenses totales</span>
+              </div>
+              <div className={s.memberDetailStat}>
+                <span className={s.memberDetailStatNum}>{memberDetail.orders.length}</span>
+                <span className={s.memberDetailStatLabel}>Commandes & achats</span>
+              </div>
+              <div className={s.memberDetailStat}>
+                <span className={s.memberDetailStatNum} style={{ color: '#8b5cf6' }}>
+                  {memberDetail.member.loyalty_points ?? 0}
+                </span>
+                <span className={s.memberDetailStatLabel}>Points fidélité</span>
+              </div>
+            </div>
+
+            <div className={s.memberDetailHistory}>
+              <h4 className={s.memberDetailHistoryTitle}>Historique complet</h4>
+              {memberDetail.loading ? (
+                <p className={s.stateMsg}>Chargement...</p>
+              ) : memberDetail.orders.length === 0 ? (
+                <p className={s.stateMsg}>Aucune commande pour ce membre.</p>
+              ) : (
+                <div className={s.memberDetailOrders}>
+                  {memberDetail.orders.map(order => {
+                    const st = STATUS_OPTIONS.find(o => o.value === order.status) || STATUS_OPTIONS[0];
+                    return (
+                      <div key={order.id} className={s.memberDetailOrder}>
+                        <div className={s.memberDetailOrderTop}>
+                          <span className={s.memberDetailOrderId}>#{order.id.slice(-6).toUpperCase()}</span>
+                          {order.order_type === 'physical' && <span className={s.saleAccountBadge}>🏪 Physique</span>}
+                          {order.order_type === 'loyalty'  && <span className={s.loyaltyOrderBadge}>⭐ Fidélité</span>}
+                          <span className={s.memberDetailOrderDate}>
+                            {new Date(order.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: st.color, marginLeft: 'auto' }}>{st.label}</span>
+                        </div>
+                        <div className={s.orderItems}>
+                          {(order.items || []).map((item, i) => (
+                            <span key={i} className={s.orderItem}>{item.name} ×{item.qty}</span>
+                          ))}
+                        </div>
+                        <div className={s.memberDetailOrderFooter}>
+                          {order.order_type === 'loyalty'
+                            ? <span className={s.loyaltyOrderBadge}>⭐ {order.points_cost} pts</span>
+                            : <span className={s.orderTotal}>${order.total}</span>
+                          }
+                          {order.points_earned > 0 && <span className={s.orderPointsEarn}>+{order.points_earned} pts</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Product Form Modal ── */}
+      {productForm !== null && (
+        <div className={s.modalOverlay} onClick={e => { if (e.target === e.currentTarget) setProductForm(null); }}>
+          <div className={`${s.modal} ${s.productModal}`}>
+            <div className={s.productModalHeader}>
+              <h3 className={s.modalTitle}>{productForm.id ? 'Modifier le produit' : 'Nouveau produit'}</h3>
+              <button className={s.receiptLightboxClose} onClick={() => setProductForm(null)}>✕</button>
+            </div>
+
+            <div className={s.productFormGrid}>
+              <div className={s.productFormField}>
+                <label className={s.productFormLabel}>Nom *</label>
+                <input className={s.productFormInput} value={productForm.name}
+                  onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))}
+                  placeholder="Purple Haze" autoFocus />
+              </div>
+              <div className={s.productFormField}>
+                <label className={s.productFormLabel}>Variété</label>
+                <input className={s.productFormInput} value={productForm.strain || ''}
+                  onChange={e => setProductForm(p => ({ ...p, strain: e.target.value }))}
+                  placeholder="Sativa Dominante" />
+              </div>
+              <div className={s.productFormField}>
+                <label className={s.productFormLabel}>Badge</label>
+                <input className={s.productFormInput} value={productForm.badge || ''}
+                  onChange={e => setProductForm(p => ({ ...p, badge: e.target.value }))}
+                  placeholder="Signature" />
+              </div>
+              <div className={s.productFormField}>
+                <label className={s.productFormLabel}>Tags (virgule)</label>
+                <input className={s.productFormInput}
+                  value={(productForm.tags || []).join(', ')}
+                  onChange={e => setProductForm(p => ({ ...p, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) }))}
+                  placeholder="Créatif, Euphorisant" />
+              </div>
+              <div className={s.productFormField}>
+                <label className={s.productFormLabel}>Prix ($)</label>
+                <input className={s.productFormInput} type="number" min={0} value={productForm.price}
+                  onChange={e => setProductForm(p => ({ ...p, price: Number(e.target.value) }))} />
+              </div>
+              <div className={s.productFormField}>
+                <label className={s.productFormLabel}>Prix fidélité (pts)</label>
+                <input className={s.productFormInput} type="number" min={0} value={productForm.loyalty_price}
+                  onChange={e => setProductForm(p => ({ ...p, loyalty_price: Number(e.target.value) }))} />
+              </div>
+            </div>
+
+            <div className={s.productFormField} style={{ marginTop: 14 }}>
+              <label className={s.productFormLabel}>Description</label>
+              <textarea className={`${s.productFormInput} ${s.productFormTextarea}`}
+                value={productForm.description || ''}
+                onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))}
+                placeholder="Description du produit..." rows={3} />
+            </div>
+
+            <div className={s.productFormField} style={{ marginTop: 14 }}>
+              <label className={s.productFormLabel}>Image</label>
+              <div className={s.productFormImageRow}>
+                <input className={s.productFormInput} value={productForm.image_url || ''}
+                  onChange={e => setProductForm(p => ({ ...p, image_url: e.target.value }))}
+                  placeholder="https://... ou uploader" />
+                <label className={s.productFormUploadBtn}>
+                  {productImgUploading ? '...' : '↑ Upload'}
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const url = await uploadProductImage(file);
+                    if (url) setProductForm(p => ({ ...p, image_url: url }));
+                  }} />
+                </label>
+              </div>
+              {productForm.image_url && (
+                <img src={productForm.image_url} alt="Preview" className={s.productFormPreview} />
+              )}
+            </div>
+
+            <div className={s.modalBtns} style={{ marginTop: 20 }}>
+              <button className={s.modalCancelBtn} onClick={() => setProductForm(null)}>Annuler</button>
+              <button className={s.modalConfirmBtn} onClick={() => saveProduct(productForm)}
+                disabled={productSaving || !productForm.name.trim()}>
+                {productSaving ? 'Sauvegarde...' : (productForm.id ? 'Enregistrer' : 'Créer le produit')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Confirm Modal ── */}

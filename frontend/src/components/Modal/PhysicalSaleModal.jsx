@@ -223,7 +223,8 @@ function CopyIcon() {
 }
 
 /* ── Main Component ── */
-export default function PhysicalSaleModal({ onClose, members, vendorName, getToken, onSaleCreated }) {
+export default function PhysicalSaleModal({ onClose, members, vendorName, getToken, onSaleCreated, products: productsProp }) {
+  const PRODUCT_LIST = (productsProp && productsProp.length > 0) ? productsProp : PRODUCTS;
   const [step, setStep]                     = useState(1);
   const [hasAccount, setHasAccount]         = useState(null);
   const [memberSearch, setMemberSearch]     = useState('');
@@ -243,8 +244,8 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
       }).slice(0, 6)
     : [];
 
-  const total = PRODUCTS.reduce((sum, p) => sum + (quantities[p.id] || 0) * p.price, 0);
-  const selectedItems = PRODUCTS
+  const total = PRODUCT_LIST.reduce((sum, p) => sum + (quantities[p.id] || 0) * p.price, 0);
+  const selectedItems = PRODUCT_LIST
     .filter(p => (quantities[p.id] || 0) > 0)
     .map(p => ({ name: p.name, qty: quantities[p.id], price: p.price }));
 
@@ -441,7 +442,7 @@ export default function PhysicalSaleModal({ onClose, members, vendorName, getTok
               <span className={s.clientTag}>{clientName || 'Client'}</span>
             </p>
             <div className={s.productList}>
-              {PRODUCTS.map(p => {
+              {PRODUCT_LIST.map(p => {
                 const qty = quantities[p.id] || 0;
                 return (
                   <div key={p.id} className={`${s.productRow} ${qty > 0 ? s.productRowActive : ''}`}>

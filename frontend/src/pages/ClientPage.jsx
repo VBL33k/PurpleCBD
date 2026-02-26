@@ -250,10 +250,24 @@ export default function ClientPage() {
   const [loyaltyDelivery, setLoyaltyDelivery]         = useState('pickup');
   const [loyaltyAddress, setLoyaltyAddress]           = useState('');
 
+  /* Products (dynamic from API) */
+  const [products, setProducts] = useState([]);
+
   /* RP Popup */
   const [showRpPopup, setShowRpPopup] = useState(false);
   const [rpName, setRpName]     = useState('');
   const [rpLoading, setRpLoading] = useState(false);
+
+  /* Load products from API on mount */
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/products`)
+      .then(r => r.json())
+      .then(d => { if (d.products) setProducts(d.products); })
+      .catch(() => {
+        // Fallback to static products if API fails
+        setProducts(PRODUCTS);
+      });
+  }, []);
 
   useEffect(() => {
     const stored = getStoredUser();
@@ -312,7 +326,7 @@ export default function ClientPage() {
   function handleLogout() { clearUser(); navigate('/'); }
 
   /* Cart */
-  const cartItems = PRODUCTS.filter(p => (quantities[p.id] || 0) > 0).map(p => ({ ...p, qty: quantities[p.id] }));
+  const cartItems = products.filter(p => (quantities[p.id] || 0) > 0).map(p => ({ ...p, qty: quantities[p.id] }));
   const cartTotal = cartItems.reduce((sum, i) => sum + i.price * i.qty, 0);
   const cartCount = cartItems.reduce((sum, i) => sum + i.qty, 0);
 
@@ -321,8 +335,8 @@ export default function ClientPage() {
   }
 
   /* Loyalty cart */
-  const loyaltyCartItems = PRODUCTS.filter(p => (loyaltyQty[p.id] || 0) > 0).map(p => ({ ...p, qty: loyaltyQty[p.id] }));
-  const loyaltyCost      = loyaltyCartItems.reduce((sum, i) => sum + i.qty * 100, 0);
+  const loyaltyCartItems = products.filter(p => (loyaltyQty[p.id] || 0) > 0).map(p => ({ ...p, qty: loyaltyQty[p.id] }));
+  const loyaltyCost      = loyaltyCartItems.reduce((sum, i) => sum + i.qty * (i.loyalty_price || 100), 0);
   const loyaltyCartCount = loyaltyCartItems.reduce((sum, i) => sum + i.qty, 0);
 
   function changeLoyaltyQty(id, delta) {
@@ -372,10 +386,10 @@ export default function ClientPage() {
   }
 
   /* Filtered products */
-  const filtered = PRODUCTS.filter(p =>
+  const filtered = products.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.strain.toLowerCase().includes(search.toLowerCase()) ||
-    p.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))
+    (p.strain || '').toLowerCase().includes(search.toLowerCase()) ||
+    (p.tags || []).some(t => t.toLowerCase().includes(search.toLowerCase()))
   );
 
   /* Load my orders */
@@ -469,7 +483,7 @@ export default function ClientPage() {
       const items = (order.items || []).map(item => ({
         name: item.name,
         qty: item.qty,
-        price: item.price ?? (PRODUCTS.find(p => p.name === item.name)?.price ?? 0),
+        price: item.price ?? (products.find(p => p.name === item.name)?.price ?? 0),
       }));
       const blob = await generateOrderReceiptBlob({
         items,
@@ -511,7 +525,7 @@ export default function ClientPage() {
         }),
       });
       if (!res.ok) throw new Error('Order failed');
-      setPendingPoints(prev => prev + cartTotal); // pts en attente jusqu'à la remise
+      setPendingPoints(prev => prev + Math.floor(cartTotal * 0.1));
       setOrderSuccess(true);
       setTimeout(() => {
         setQuantities({});
@@ -683,9 +697,9 @@ export default function ClientPage() {
                 const qty = quantities[p.id] || 0;
                 return (
                   <div key={p.id} className={s.productRow}>
-                    {/* Image placeholder */}
+                    {/* Image */}
                     <div className={s.productImg}>
-                      <ImageIcon />
+                      {p.image_url ? <img src={p.image_url} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : <ImageIcon />}
                     </div>
 
                     {/* Info */}
@@ -884,11 +898,13 @@ export default function ClientPage() {
 
             {/* Product list */}
             <div className={s.productList}>
-              {PRODUCTS.map(p => {
+              {products.map(p => {
                 const qty = loyaltyQty[p.id] || 0;
                 return (
                   <div key={p.id} className={s.productRow}>
-                    <div className={s.productImg}><ImageIcon /></div>
+                    <div className={s.productImg}>
+                      {p.image_url ? <img src={p.image_url} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : <ImageIcon />}
+                    </div>
                     <div className={s.productInfo}>
                       <div className={s.productNameRow}>
                         <span className={s.productName}>{p.name}</span>
@@ -896,11 +912,11 @@ export default function ClientPage() {
                       </div>
                       <span className={s.productStrain}>{p.strain}</span>
                       <div className={s.productTags}>
-                        {p.tags.map(t => <span key={t} className={s.productTag}>{t}</span>)}
+                        {(p.tags || []).map(t => <span key={t} className={s.productTag}>{t}</span>)}
                       </div>
                     </div>
                     <div className={s.productActions}>
-                      <span className={s.loyaltyPrice}>100 pts</span>
+                      <span className={s.loyaltyPrice}>{p.loyalty_price || 100} pts</span>
                       {qty === 0 ? (
                         <button className={s.addBtn} onClick={() => changeLoyaltyQty(p.id, 1)}>Ajouter</button>
                       ) : (
@@ -988,7 +1004,7 @@ export default function ClientPage() {
                 {/* Points à gagner */}
                 <div className={s.loyaltyEarnNotice}>
                   <StarIcon />
-                  <span>Tu gagneras <strong>{cartTotal} pts</strong> crédités à la livraison / au retrait</span>
+                  <span>Tu gagneras <strong>{Math.floor(cartTotal * 0.1)} pts</strong> crédités à la livraison / au retrait</span>
                 </div>
 
                 {/* Payment notice */}

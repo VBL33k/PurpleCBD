@@ -587,6 +587,136 @@ app.get('/api/physical-sales', async (req, res) => {
   res.json({ sales: data });
 });
 
+// ────────────────────────────────────────────────────────────────
+// ── Produits ──
+// ────────────────────────────────────────────────────────────────
+
+// Public : produits actifs
+app.get('/api/products', async (_req, res) => {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('active', true)
+    .order('sort_order', { ascending: true });
+  if (error) return res.status(500).json({ error: 'Erreur récupération produits.' });
+  res.json({ products: data });
+});
+
+// Admin : tous les produits (inclus inactifs)
+app.get('/api/products/all', async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .order('sort_order', { ascending: true });
+  if (error) return res.status(500).json({ error: 'Erreur récupération produits.' });
+  res.json({ products: data });
+});
+
+// Admin : créer un produit
+app.post('/api/products', async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const { name, description, strain, badge, tags, price, loyalty_price, image_url, sort_order } = req.body;
+  if (!name) return res.status(400).json({ error: 'Nom requis.' });
+  const { data, error } = await supabase
+    .from('products')
+    .insert({
+      name,
+      description: description || '',
+      strain:      strain      || '',
+      badge:       badge       || '',
+      tags:        tags        || [],
+      price:       price       ?? 150,
+      loyalty_price: loyalty_price ?? 100,
+      image_url:   image_url   || null,
+      sort_order:  sort_order  ?? 0,
+    })
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: 'Erreur création produit.' });
+  res.json({ product: data });
+});
+
+// Admin : modifier un produit
+app.put('/api/products/:id', async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const { id } = req.params;
+  const { name, description, strain, badge, tags, price, loyalty_price, image_url, sort_order, active } = req.body;
+  const updates = {};
+  if (name          !== undefined) updates.name          = name;
+  if (description   !== undefined) updates.description   = description;
+  if (strain        !== undefined) updates.strain        = strain;
+  if (badge         !== undefined) updates.badge         = badge;
+  if (tags          !== undefined) updates.tags          = tags;
+  if (price         !== undefined) updates.price         = price;
+  if (loyalty_price !== undefined) updates.loyalty_price = loyalty_price;
+  if (image_url     !== undefined) updates.image_url     = image_url;
+  if (sort_order    !== undefined) updates.sort_order    = sort_order;
+  if (active        !== undefined) updates.active        = active;
+  const { data, error } = await supabase
+    .from('products')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: 'Erreur mise à jour produit.' });
+  res.json({ product: data });
+});
+
+// Admin : désactiver un produit (soft delete)
+app.delete('/api/products/:id', async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const { id } = req.params;
+  const { error } = await supabase
+    .from('products')
+    .update({ active: false })
+    .eq('id', id);
+  if (error) return res.status(500).json({ error: 'Erreur suppression produit.' });
+  res.json({ ok: true });
+});
+
+// ────────────────────────────────────────────────────────────────
+// ── Historique commandes d'un membre (admin) ──
+// ────────────────────────────────────────────────────────────────
+app.get('/api/members/:discordId/orders', async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const { discordId } = req.params;
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('discord_id', discordId)
+    .order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: 'Erreur récupération commandes.' });
+  res.json({ orders: data });
+});
+
+// ────────────────────────────────────────────────────────────────
+// ── Upload image vers ImgBB (proxy admin) ──
+// ────────────────────────────────────────────────────────────────
+app.post('/api/upload-image', async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const { imageBase64 } = req.body;
+  if (!imageBase64) return res.status(400).json({ error: 'Image requise (base64).' });
+  try {
+    const form = new URLSearchParams();
+    form.append('key',   'bb5c194616ba0824a34184c2e9faf5ba');
+    form.append('image', imageBase64);
+    const r = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: form });
+    const d = await r.json();
+    if (!d.success) return res.status(400).json({ error: 'Upload ImgBB échoué.' });
+    res.json({ url: d.data.url });
+  } catch (e) {
+    console.error('ImgBB upload error:', e);
+    res.status(500).json({ error: 'Erreur upload image.' });
+  }
+});
+
 // ── 404 ──
 app.use((_req, res) => res.status(404).json({ error: 'Route non trouvée.' }));
 
