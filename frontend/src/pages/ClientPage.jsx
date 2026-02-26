@@ -583,7 +583,8 @@ export default function ClientPage() {
                             <span className={s.orderTotal}>${order.total}</span>
                             {isPhysical && order.receipt_url && (
                               <button className={s.receiptBtn} onClick={() => setReceiptLightbox(order.receipt_url)}>
-                                🧾 Ticket
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="13" y2="15"/></svg>
+                                Ticket
                               </button>
                             )}
                             {!isPhysical && (
