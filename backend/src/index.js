@@ -493,24 +493,29 @@ app.post('/api/physical-sales', async (req, res) => {
   const vendorUserId = user.id;
   const pointsEarned = clientType === 'account' && discordId ? total : 0;
 
-  // Upload receipt to Supabase Storage
+  // Upload receipt to ImgBB
+  const IMGBB_KEY = 'bb5c194616ba0824a34184c2e9faf5ba';
   let receiptUrl = null;
   if (receiptBase64) {
     try {
-      const base64Data = receiptBase64.replace(/^data:image\/png;base64,/, '');
-      const buffer = Buffer.from(base64Data, 'base64');
-      const filename = `${invoiceNumber}.png`;
-      const { error: uploadError } = await supabase.storage
-        .from('receipts')
-        .upload(filename, buffer, { contentType: 'image/png', upsert: true });
-      if (!uploadError) {
-        const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(filename);
-        receiptUrl = urlData.publicUrl;
+      const base64Data = receiptBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+      const body = new URLSearchParams();
+      body.append('key', IMGBB_KEY);
+      body.append('image', base64Data);
+      body.append('name', invoiceNumber);
+      const imgbbRes = await fetch('https://api.imgbb.com/1/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      });
+      const imgbbJson = await imgbbRes.json();
+      if (imgbbJson.success) {
+        receiptUrl = imgbbJson.data.url;
       } else {
-        console.error('Receipt upload error:', uploadError);
+        console.error('ImgBB upload failed:', imgbbJson);
       }
     } catch (e) {
-      console.error('Receipt processing error:', e);
+      console.error('ImgBB upload error:', e);
     }
   }
 
@@ -587,17 +592,6 @@ app.use((_req, res) => res.status(404).json({ error: 'Route non trouvée.' }));
 
 app.listen(PORT, async () => {
   console.log(`Purple CBD API running on port ${PORT}`);
-  // ── Auto-init receipts storage bucket ──
-  try {
-    await supabase.storage.createBucket('receipts', { public: true, fileSizeLimit: 5 * 1024 * 1024 });
-    console.log('✓ Storage bucket "receipts" created');
-  } catch (e) {
-    if (!e.message?.includes('already exists') && !e.message?.includes('duplicate')) {
-      console.log('Storage bucket note:', e.message || e);
-    } else {
-      console.log('✓ Storage bucket "receipts" already exists');
-    }
-  }
   // ── Auto-check schema ──
   const { error } = await supabase.from('members').select('banned').limit(0);
   if (error?.code === '42703') {

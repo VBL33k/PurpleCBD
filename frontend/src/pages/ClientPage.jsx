@@ -77,6 +77,7 @@ export default function ClientPage() {
   const [chatOrder, setChatOrder] = useState(null); // { id } for chat modal
   const [unreadCounts, setUnreadCounts] = useState({}); // { orderId: count }
   const [receiptLightbox, setReceiptLightbox] = useState(null); // URL reçu lightbox
+  const [copiedLightbox, setCopiedLightbox]   = useState(false);
   const chatOrderRef = useRef(null);
   const [banData, setBanData] = useState(null); // { message } when banned
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
@@ -379,6 +380,17 @@ export default function ClientPage() {
             <button className={s.receiptLightboxClose} onClick={() => setReceiptLightbox(null)}>✕</button>
             <p className={s.receiptLightboxTitle}>Ticket de caisse</p>
             <img src={receiptLightbox} alt="Ticket de caisse" className={s.receiptLightboxImg} />
+            <div className={s.receiptLightboxUrlRow}>
+              <input className={s.receiptLightboxUrlInput} value={receiptLightbox} readOnly />
+              <button
+                className={`${s.receiptLightboxCopyBtn} ${copiedLightbox ? s.receiptLightboxCopyDone : ''}`}
+                onClick={async () => {
+                  try { await navigator.clipboard.writeText(receiptLightbox); setCopiedLightbox(true); setTimeout(() => setCopiedLightbox(false), 2000); } catch {}
+                }}
+              >
+                {copiedLightbox ? '✓ Copié' : '⎘ Copier'}
+              </button>
+            </div>
           </div>
         </div>
       )}

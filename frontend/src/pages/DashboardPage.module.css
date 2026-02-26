@@ -1295,9 +1295,41 @@
 }
 
 .saleInvoice {
-  font-size: 10px;
+  font-size: 12px;
   font-family: monospace;
-  color: rgba(139, 92, 246, 0.7);
+  font-weight: 700;
+  color: #a78bfa;
+  letter-spacing: 0.03em;
+}
+
+/* ── Invoice row with copy button ── */
+.saleInvoiceRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.saleInvoiceCopy {
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 5px;
+  color: #a78bfa;
+  font-size: 13px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  padding: 0;
+}
+.saleInvoiceCopy:hover { background: rgba(139, 92, 246, 0.25); color: #c4b5fd; }
+.saleInvoiceCopied {
+  background: rgba(34, 197, 94, 0.15) !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+  color: #4ade80 !important;
 }
 
 .saleReceiptLink {
@@ -1420,6 +1452,42 @@
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
 }
+
+.receiptLightboxUrlRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.receiptLightboxUrlInput {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-family: monospace;
+  color: #444;
+  outline: none;
+  min-width: 0;
+}
+
+.receiptLightboxCopyBtn {
+  flex-shrink: 0;
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.receiptLightboxCopyBtn:hover { background: #6d28d9; }
+.receiptLightboxCopyDone { background: #16a34a !important; }
 
 /* ── Responsive ── */
 @media (max-width: 900px) {

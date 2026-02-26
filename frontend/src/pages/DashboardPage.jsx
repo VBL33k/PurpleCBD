@@ -157,6 +157,8 @@ export default function DashboardPage() {
   const [physicalSalesError, setPhysicalSalesError] = useState('');
   const [newSaleModal, setNewSaleModal]         = useState(false);
   const [receiptLightbox, setReceiptLightbox]   = useState(null); // URL du reçu à afficher
+  const [copiedInvoice, setCopiedInvoice]       = useState(null); // id de la vente dont le N° est copié
+  const [copiedLightbox, setCopiedLightbox]     = useState(false);
 
   /* Member actions */
   const [actionLoading, setActionLoading] = useState({});
@@ -302,6 +304,22 @@ export default function DashboardPage() {
       setPhysicalSalesError('Impossible de charger les ventes.');
       console.error(e);
     } finally { setPhysicalSalesLoading(false); }
+  }
+
+  async function copyInvoiceNumber(invoiceNumber, saleId) {
+    try {
+      await navigator.clipboard.writeText(invoiceNumber);
+      setCopiedInvoice(saleId);
+      setTimeout(() => setCopiedInvoice(null), 2000);
+    } catch { /* ignore */ }
+  }
+
+  async function copyReceiptUrl(url) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedLightbox(true);
+      setTimeout(() => setCopiedLightbox(false), 2000);
+    } catch { /* ignore */ }
   }
 
   function handleTabChange(tab) {
@@ -842,10 +860,19 @@ export default function DashboardPage() {
                         </div>
                         <div className={s.saleFooterRight}>
                           {sale.invoice_number && (
-                            <span className={s.saleInvoice}>{sale.invoice_number}</span>
+                            <div className={s.saleInvoiceRow}>
+                              <span className={s.saleInvoice}>{sale.invoice_number}</span>
+                              <button
+                                className={`${s.saleInvoiceCopy} ${copiedInvoice === sale.id ? s.saleInvoiceCopied : ''}`}
+                                onClick={() => copyInvoiceNumber(sale.invoice_number, sale.id)}
+                                title="Copier le numéro de facture"
+                              >
+                                {copiedInvoice === sale.id ? '✓' : '⎘'}
+                              </button>
+                            </div>
                           )}
                           {sale.receipt_url && (
-                            <button className={s.saleReceiptLink} onClick={() => setReceiptLightbox(sale.receipt_url)}>
+                            <button className={s.saleReceiptLink} onClick={() => { setReceiptLightbox(sale.receipt_url); setCopiedLightbox(false); }}>
                               🧾 Ticket
                             </button>
                           )}
@@ -889,6 +916,15 @@ export default function DashboardPage() {
             <button className={s.receiptLightboxClose} onClick={() => setReceiptLightbox(null)}>✕</button>
             <p className={s.receiptLightboxTitle}>Ticket de caisse</p>
             <img src={receiptLightbox} alt="Ticket de caisse" className={s.receiptLightboxImg} />
+            <div className={s.receiptLightboxUrlRow}>
+              <input className={s.receiptLightboxUrlInput} value={receiptLightbox} readOnly />
+              <button
+                className={`${s.receiptLightboxCopyBtn} ${copiedLightbox ? s.receiptLightboxCopyDone : ''}`}
+                onClick={() => copyReceiptUrl(receiptLightbox)}
+              >
+                {copiedLightbox ? '✓ Copié' : '⎘ Copier le lien'}
+              </button>
+            </div>
           </div>
         </div>
       )}
