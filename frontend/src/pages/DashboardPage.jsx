@@ -275,119 +275,105 @@ function TopProductsChart({ orders, sales }) {
 }
 
 /* ── Signature generation helpers ── */
-async function _loadImg(src) {
-  return new Promise(resolve => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    let done = false;
-    const fin = r => { if (!done) { done = true; resolve(r); } };
-    img.onload  = () => fin(img);
-    img.onerror = () => fin(null);
-    setTimeout(() => fin(null), 3000);
-    img.src = src;
-  });
+function _xmlEsc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 async function generateSignatureBlob(vendorName, role) {
-  const W = 480, H = 160, SCALE = 2;
-  const canvas = document.createElement('canvas');
-  canvas.width  = W * SCALE;
-  canvas.height = H * SCALE;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(SCALE, SCALE);
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-
-  // White background
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, W, H);
-
-  // Load cursive font (Great Vibes — elegant signature style)
-  let fontLoaded = false;
-  try {
-    const ff = new FontFace(
-      'GreatVibes',
-      'url(https://fonts.gstatic.com/s/greatvibes/v19/RWmMoKWR9v4ksMfaWd_JN-XCg6UKDXlCZA.woff2)'
-    );
-    await ff.load();
-    document.fonts.add(ff);
-    fontLoaded = true;
-  } catch (e) { /* fallback to system cursive */ }
-
-  const PAD = 28;
+  const W = 620, H = 200;
   const name = vendorName || 'Purple CBD';
-
-  // ── Name in cursive ──
-  let fontSize = 82;
-  ctx.font = `normal ${fontSize}px ${fontLoaded ? "'GreatVibes'" : 'cursive'}, cursive`;
-  let textW = ctx.measureText(name).width;
-  // Scale down if too wide
-  while (textW > W - PAD * 2 && fontSize > 32) {
-    fontSize -= 4;
-    ctx.font = `normal ${fontSize}px ${fontLoaded ? "'GreatVibes'" : 'cursive'}, cursive`;
-    textW = ctx.measureText(name).width;
-  }
-  const nameBaseY = 102;
-  ctx.fillStyle = '#1a1530';
-  ctx.fillText(name, PAD, nameBaseY);
-
-  // ── Flourish underline (bezier swash) ──
-  const swashStartX = PAD;
-  const swashEndX   = PAD + textW + 38;
-  const swashY      = nameBaseY + 10;
-  ctx.save();
-  ctx.strokeStyle = '#1a1530';
-  ctx.lineWidth   = 1.4;
-  ctx.lineCap     = 'round';
-  ctx.lineJoin    = 'round';
-  ctx.beginPath();
-  ctx.moveTo(swashStartX, swashY - 2);
-  ctx.bezierCurveTo(
-    swashStartX + textW * 0.25, swashY + 10,
-    swashStartX + textW * 0.65, swashY - 4,
-    swashEndX - 16, swashY + 14
-  );
-  // Small terminal loop
-  ctx.bezierCurveTo(swashEndX - 8, swashY + 18, swashEndX + 4, swashY + 12, swashEndX, swashY + 6);
-  ctx.stroke();
-  ctx.restore();
-
-  // ── Thin purple separator ──
-  const sepY = swashY + 22;
-  ctx.save();
-  const grad = ctx.createLinearGradient(PAD, 0, PAD + 220, 0);
-  grad.addColorStop(0, 'rgba(109,40,217,0.7)');
-  grad.addColorStop(1, 'rgba(109,40,217,0)');
-  ctx.strokeStyle = grad;
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(PAD, sepY);
-  ctx.lineTo(PAD + 220, sepY);
-  ctx.stroke();
-  ctx.restore();
-
-  // ── Role text (spaced small caps) ──
   const roleStr = (role || 'Administrateur').toUpperCase();
-  ctx.save();
-  ctx.fillStyle = '#7c3aed';
-  ctx.font = '500 10px "Helvetica Neue", Helvetica, Arial, sans-serif';
-  let rx = PAD;
-  for (const char of roleStr) {
-    ctx.fillText(char, rx, sepY + 16);
-    rx += ctx.measureText(char).width + 1.8;
-  }
-  ctx.restore();
 
-  // ── "Purple CBD" brand (right side) ──
-  ctx.save();
-  ctx.font = '400 10px "Helvetica Neue", Helvetica, Arial, sans-serif';
-  ctx.fillStyle = 'rgba(139,92,246,0.45)';
-  const brand = 'Purple CBD';
-  const brandW = ctx.measureText(brand).width;
-  ctx.fillText(brand, W - PAD - brandW, sepY + 16);
-  ctx.restore();
+  // ── Embed Pinyon Script font (true calligraphic, high stroke contrast) ──
+  let fontCss = '';
+  try {
+    const r = await fetch(
+      'https://fonts.gstatic.com/s/pinyonscript/v25/6xKpdSJbL9-e9LuoeQiDRQR8aOLQO4bhiDY.woff2'
+    );
+    const buf = await r.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 8192) {
+      bin += String.fromCharCode(...bytes.subarray(i, i + 8192));
+    }
+    const b64 = btoa(bin);
+    fontCss = `@font-face{font-family:'SigScript';src:url('data:font/woff2;base64,${b64}') format('woff2');font-weight:normal;font-style:normal;}`;
+  } catch (e) { /* fallback */ }
 
-  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  const ff = fontCss ? "'SigScript', cursive" : 'cursive';
+
+  // ── Build SVG — transparent background, white ink ──
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+  <defs>
+    <style>${fontCss}</style>
+    <filter id="ink" x="-2%" y="-10%" width="104%" height="130%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="4" seed="2" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.1"
+        xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+      <feGaussianBlur in="displaced" stdDeviation="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Signature name — white ink, calligraphic font -->
+  <text x="22" y="122"
+    font-family="${ff}"
+    font-size="100"
+    fill="rgba(255,255,255,0.94)"
+    filter="url(#ink)"
+  >${_xmlEsc(name)}</text>
+
+  <!-- Flourish swash underline -->
+  <path d="M 22,138 C 90,152 240,132 390,148 C 430,153 455,158 475,164 C 484,168 480,160 474,155"
+    stroke="rgba(255,255,255,0.78)" stroke-width="1.7"
+    fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Hairline start-of-swash upstroke -->
+  <path d="M 22,138 C 18,130 16,122 20,116"
+    stroke="rgba(255,255,255,0.35)" stroke-width="0.9"
+    fill="none" stroke-linecap="round"/>
+
+  <!-- Separator -->
+  <line x1="22" y1="174" x2="330" y2="174"
+    stroke="rgba(167,139,250,0.55)" stroke-width="0.7"/>
+
+  <!-- Role — spaced small caps -->
+  <text x="22" y="190"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="10" letter-spacing="3.5"
+    fill="rgba(196,181,253,0.85)" font-weight="500"
+  >${_xmlEsc(roleStr)}</text>
+
+  <!-- Brand -->
+  <text x="${W - 22}" y="190"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="10" text-anchor="end"
+    fill="rgba(167,139,250,0.38)"
+  >Purple CBD</text>
+</svg>`;
+
+  // ── Render SVG → canvas (transparent, 2× retina) ──
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width  = W * 2;
+      canvas.height = H * 2;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(2, 2);
+      ctx.clearRect(0, 0, W, H);   // transparent background
+      ctx.drawImage(img, 0, 0, W, H);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(resolve, 'image/png');
+    };
+    img.onerror = e => { URL.revokeObjectURL(url); reject(e); };
+    img.src = url;
+  });
 }
 
 export default function DashboardPage() {

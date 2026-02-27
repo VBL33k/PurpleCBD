@@ -2208,8 +2208,8 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
-  background: rgba(255,255,255,0.02);
-  min-height: 80px;
+  background: linear-gradient(135deg, #0d0820 0%, #160d30 100%);
+  min-height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
