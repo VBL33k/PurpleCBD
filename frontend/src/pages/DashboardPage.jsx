@@ -140,6 +140,34 @@ function ImgIcon() {
     </svg>
   );
 }
+function LogsIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="8" y1="13" x2="16" y2="13"/>
+      <line x1="8" y1="17" x2="12" y2="17"/>
+    </svg>
+  );
+}
+
+/* ── Action metadata for Logs tab ── */
+const ACTION_META = {
+  'member.register':     { label: 'Inscription',         color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)'  },
+  'member.reset':        { label: 'Reset compte',         color: '#f97316', bg: 'rgba(249,115,22,0.15)'  },
+  'member.ban':          { label: 'Ban',                  color: '#ef4444', bg: 'rgba(239,68,68,0.15)'   },
+  'member.unban':        { label: 'Unban',                color: '#22c55e', bg: 'rgba(34,197,94,0.15)'   },
+  'member.points_edit':  { label: 'Points modifiés',      color: '#06b6d4', bg: 'rgba(6,182,212,0.15)'   },
+  'order.status_change': { label: 'Statut commande',      color: '#a78bfa', bg: 'rgba(167,139,250,0.15)' },
+  'order.delete':        { label: 'Commande supprimée',   color: '#ef4444', bg: 'rgba(239,68,68,0.15)'   },
+  'sale.create':         { label: 'Vente physique',       color: '#10b981', bg: 'rgba(16,185,129,0.15)'  },
+  'settings.change':     { label: 'Paramètres',           color: '#f59e0b', bg: 'rgba(245,158,11,0.15)'  },
+  'product.add':         { label: 'Produit ajouté',       color: '#22c55e', bg: 'rgba(34,197,94,0.15)'   },
+  'product.update':      { label: 'Produit modifié',      color: '#06b6d4', bg: 'rgba(6,182,212,0.15)'   },
+  'product.enable':      { label: 'Produit activé',       color: '#22c55e', bg: 'rgba(34,197,94,0.15)'   },
+  'product.disable':     { label: 'Produit désactivé',    color: '#f97316', bg: 'rgba(249,115,22,0.15)'  },
+  'product.delete':      { label: 'Produit supprimé',     color: '#ef4444', bg: 'rgba(239,68,68,0.15)'   },
+};
 
 /* ── Chart Components ── */
 
@@ -439,6 +467,16 @@ export default function DashboardPage() {
   const [sigCopied, setSigCopied]               = useState(false);
   const [sigAvatarUploading, setSigAvatarUploading] = useState(false);
 
+  /* Logs */
+  const [logs, setLogs]                     = useState([]);
+  const [logsLoading, setLogsLoading]       = useState(false);
+  const [logsTotal, setLogsTotal]           = useState(0);
+  const [logsOffset, setLogsOffset]         = useState(0);
+  const [logsSearch, setLogsSearch]         = useState('');
+  const [logsActionFilter, setLogsActionFilter] = useState('');
+  const [logsDateFrom, setLogsDateFrom]     = useState('');
+  const [logsDateTo, setLogsDateTo]         = useState('');
+
   /* Member detail */
   const [memberDetail, setMemberDetail] = useState(null);
 
@@ -612,12 +650,41 @@ export default function DashboardPage() {
     if (tab === 'sales'     || tab === 'dashboard') fetchPhysicalSales();
     if (tab === 'catalogue' || tab === 'dashboard') fetchProducts();
     if (tab === 'settings') loadVendorProfile();
+    if (tab === 'logs') fetchLogs({ reset: true });
   }
 
   /* Admin token helper */
   async function getToken() {
     const { data: { session } } = await supabase.auth.getSession();
     return session?.access_token;
+  }
+
+  /* Fetch logs */
+  async function fetchLogs({ reset = false } = {}) {
+    setLogsLoading(true);
+    const currentOffset = reset ? 0 : logsOffset;
+    try {
+      const token = await getToken();
+      const params = new URLSearchParams({ limit: '50', offset: String(currentOffset) });
+      if (logsSearch)       params.set('search', logsSearch);
+      if (logsActionFilter) params.set('action', logsActionFilter);
+      if (logsDateFrom)     params.set('date_from', logsDateFrom);
+      if (logsDateTo)       params.set('date_to', logsDateTo);
+      const res = await fetch(`${BACKEND_URL}/api/logs?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      const newLogs = json.logs || [];
+      if (reset) {
+        setLogs(newLogs);
+        setLogsOffset(newLogs.length);
+      } else {
+        setLogs(prev => [...prev, ...newLogs]);
+        setLogsOffset(prev => prev + newLogs.length);
+      }
+      setLogsTotal(json.total || 0);
+    } catch (e) { console.error(e); }
+    finally { setLogsLoading(false); }
   }
 
   /* Reset member account (points + orders) */
@@ -1018,6 +1085,9 @@ export default function DashboardPage() {
             </button>
             <button className={`${s.navItem} ${activeTab === 'settings' ? s.navItemActive : ''}`} onClick={() => handleTabChange('settings')}>
               <SettingsIcon /> Paramètres
+            </button>
+            <button className={`${s.navItem} ${activeTab === 'logs' ? s.navItemActive : ''}`} onClick={() => handleTabChange('logs')}>
+              <LogsIcon /> Logs
             </button>
           </nav>
         </div>
@@ -1807,6 +1877,176 @@ export default function DashboardPage() {
                   </div>
 
                 </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── Logs ── */}
+        {activeTab === 'logs' && (
+          <>
+            <header className={s.header}>
+              <div>
+                <h1 className={s.pageTitle}>Logs</h1>
+                <p className={s.pageSubtitle}>Historique complet de l'activité</p>
+              </div>
+            </header>
+            <div className={s.content}>
+
+              {/* Filters bar */}
+              <div className={s.logsFiltersBar}>
+                <input
+                  className={s.logsSearchInput}
+                  placeholder="Rechercher (cible, acteur, action...)"
+                  value={logsSearch}
+                  onChange={e => setLogsSearch(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && fetchLogs({ reset: true })}
+                />
+                <select
+                  className={s.logsFilterSelect}
+                  value={logsActionFilter}
+                  onChange={e => setLogsActionFilter(e.target.value)}
+                >
+                  <option value="">Toutes les actions</option>
+                  <optgroup label="Membres">
+                    <option value="member.register">Inscription</option>
+                    <option value="member.reset">Reset compte</option>
+                    <option value="member.ban">Ban</option>
+                    <option value="member.unban">Unban</option>
+                    <option value="member.points_edit">Points modifiés</option>
+                  </optgroup>
+                  <optgroup label="Commandes">
+                    <option value="order.status_change">Statut commande</option>
+                    <option value="order.delete">Commande supprimée</option>
+                  </optgroup>
+                  <optgroup label="Ventes">
+                    <option value="sale.create">Vente physique</option>
+                  </optgroup>
+                  <optgroup label="Produits">
+                    <option value="product.add">Produit ajouté</option>
+                    <option value="product.update">Produit modifié</option>
+                    <option value="product.enable">Produit activé</option>
+                    <option value="product.disable">Produit désactivé</option>
+                    <option value="product.delete">Produit supprimé</option>
+                  </optgroup>
+                  <optgroup label="Paramètres">
+                    <option value="settings.change">Paramètres</option>
+                  </optgroup>
+                </select>
+                <input
+                  type="date"
+                  className={s.logsDateInput}
+                  value={logsDateFrom}
+                  onChange={e => setLogsDateFrom(e.target.value)}
+                  title="Date de début"
+                />
+                <input
+                  type="date"
+                  className={s.logsDateInput}
+                  value={logsDateTo}
+                  onChange={e => setLogsDateTo(e.target.value)}
+                  title="Date de fin"
+                />
+                <button className={s.logsApplyBtn} onClick={() => fetchLogs({ reset: true })}>
+                  Filtrer
+                </button>
+                {(logsSearch || logsActionFilter || logsDateFrom || logsDateTo) && (
+                  <button className={s.logsClearBtn} onClick={() => {
+                    setLogsSearch(''); setLogsActionFilter(''); setLogsDateFrom(''); setLogsDateTo('');
+                    setTimeout(() => fetchLogs({ reset: true }), 0);
+                  }}>
+                    Réinitialiser
+                  </button>
+                )}
+              </div>
+
+              {/* Table */}
+              {logsLoading && logs.length === 0 ? (
+                <p className={s.stateMsg}>Chargement des logs...</p>
+              ) : logs.length === 0 ? (
+                <div className={s.logsEmpty}>
+                  <LogsIcon />
+                  <p>Aucun log trouvé.</p>
+                </div>
+              ) : (
+                <>
+                  <div className={s.logsTableWrap}>
+                    <table className={s.logsTable}>
+                      <thead>
+                        <tr className={s.logsTableHead}>
+                          <th>Date & Heure</th>
+                          <th>Action</th>
+                          <th>Cible</th>
+                          <th>Acteur</th>
+                          <th>Détails</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {logs.map(log => {
+                          const meta = ACTION_META[log.action] || { label: log.action, color: '#a1a1aa', bg: 'rgba(161,161,170,0.12)' };
+                          const det = log.details || {};
+                          return (
+                            <tr key={log.id} className={s.logsTableRow}>
+                              <td className={s.logTime}>
+                                {new Date(log.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                {' '}
+                                <span style={{ opacity: 0.55 }}>
+                                  {new Date(log.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                </span>
+                              </td>
+                              <td>
+                                <span
+                                  className={s.logActionBadge}
+                                  style={{ color: meta.color, background: meta.bg, borderColor: `${meta.color}33` }}
+                                >
+                                  {meta.label}
+                                </span>
+                              </td>
+                              <td className={s.logTarget}>{log.target_name || <span style={{ opacity: 0.3 }}>—</span>}</td>
+                              <td className={s.logActor}>{log.actor_email}</td>
+                              <td className={s.logDetails}>
+                                {log.action === 'member.points_edit' && det.old_points !== undefined && (
+                                  <span>{det.old_points} → {det.new_points} pts</span>
+                                )}
+                                {log.action === 'order.status_change' && det.old_status && (
+                                  <span>{det.old_status} → {det.new_status}</span>
+                                )}
+                                {log.action === 'settings.change' && (
+                                  <span>
+                                    {det.store_open !== undefined && `Boutique: ${det.store_open ? 'ouverte' : 'fermée'}`}
+                                    {det.delivery_enabled !== undefined && `${det.store_open !== undefined ? ' · ' : ''}Livraison: ${det.delivery_enabled ? 'activée' : 'désactivée'}`}
+                                  </span>
+                                )}
+                                {log.action === 'sale.create' && det.total !== undefined && (
+                                  <span>${det.total} · {det.invoiceNumber}</span>
+                                )}
+                                {log.action === 'member.ban' && det.banMessage && (
+                                  <span title={det.banMessage}>"{det.banMessage.slice(0, 40)}{det.banMessage.length > 40 ? '…' : ''}"</span>
+                                )}
+                                {['product.add', 'product.update', 'product.enable', 'product.disable'].includes(log.action) && det.price !== undefined && (
+                                  <span>${det.price}</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Load more */}
+                  {logs.length < logsTotal && (
+                    <div className={s.logsLoadMoreRow}>
+                      <button
+                        className={s.logsLoadMore}
+                        onClick={() => fetchLogs()}
+                        disabled={logsLoading}
+                      >
+                        {logsLoading ? 'Chargement...' : `Voir plus (${logs.length} / ${logsTotal})`}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </>

@@ -64,6 +64,22 @@ async function sendDiscordEmbed(embed) {
   } catch (err) { console.error('Discord send error:', err); }
 }
 
+// ── Log action (fire-and-forget) ──
+async function logAction(user, action, targetName = null, targetId = null, details = {}) {
+  supabase
+    .from('logs')
+    .insert({
+      actor_id:    user?.id    || 'system',
+      actor_email: user?.email || 'system',
+      action,
+      target_name: targetName  || null,
+      target_id:   targetId ? String(targetId) : null,
+      details,
+    })
+    .then(({ error }) => { if (error) console.error('[logAction]', error.message); })
+    .catch(err => console.error('[logAction] network error:', err));
+}
+
 // ── Discord OAuth ──
 app.post('/api/auth/discord/callback', async (req, res) => {
   const { code, redirectUri } = req.body;
@@ -134,6 +150,7 @@ app.post('/api/members/register', async (req, res) => {
         { name: 'ID Discord',     value: `\`${discordId}\``,    inline: false },
       ],
     }).catch(() => {});
+    logAction({ id: discordId, email: username || discordId }, 'member.register', rpName, discordId, { username, avatarUrl });
   }
 
   res.json({ ok: true, isNew });
@@ -181,12 +198,14 @@ app.post('/api/members/:discordId/reset', async (req, res) => {
   const user = await requireAdmin(req, res);
   if (!user) return;
   const { discordId } = req.params;
+  const { data: memberToReset } = await supabase.from('members').select('username, rp_name').eq('discord_id', discordId).maybeSingle();
   await supabase.from('orders').delete().eq('discord_id', discordId);
   const { error } = await supabase
     .from('members')
     .update({ loyalty_points: 0, rp_name: null, updated_at: new Date().toISOString() })
     .eq('discord_id', discordId);
   if (error) return res.status(500).json({ error: 'Erreur reset.' });
+  logAction(user, 'member.reset', memberToReset?.rp_name || memberToReset?.username || discordId, discordId, {});
   res.json({ ok: true });
 });
 
@@ -196,11 +215,13 @@ app.post('/api/members/:discordId/ban', async (req, res) => {
   if (!user) return;
   const { discordId } = req.params;
   const { banned, banMessage } = req.body;
+  const { data: memberToBan } = await supabase.from('members').select('username, rp_name').eq('discord_id', discordId).maybeSingle();
   const { error } = await supabase
     .from('members')
     .update({ banned: banned ?? true, ban_message: banMessage || null, updated_at: new Date().toISOString() })
     .eq('discord_id', discordId);
   if (error) return res.status(500).json({ error: 'Erreur ban.' });
+  logAction(user, banned !== false ? 'member.ban' : 'member.unban', memberToBan?.rp_name || memberToBan?.username || discordId, discordId, { banMessage: banMessage || null });
   res.json({ ok: true });
 });
 
@@ -211,11 +232,13 @@ app.patch('/api/members/:discordId/points', async (req, res) => {
   const { discordId } = req.params;
   const { points } = req.body;
   if (typeof points !== 'number' || points < 0) return res.status(400).json({ error: 'points invalide.' });
+  const { data: prevMember } = await supabase.from('members').select('loyalty_points, username, rp_name').eq('discord_id', discordId).maybeSingle();
   const { error } = await supabase
     .from('members')
     .update({ loyalty_points: points, updated_at: new Date().toISOString() })
     .eq('discord_id', discordId);
   if (error) return res.status(500).json({ error: 'Erreur mise à jour points.' });
+  logAction(user, 'member.points_edit', prevMember?.rp_name || prevMember?.username || discordId, discordId, { old_points: prevMember?.loyalty_points ?? 0, new_points: points });
   res.json({ ok: true });
 });
 
@@ -259,6 +282,11 @@ app.put('/api/settings', async (req, res) => {
         : 'La livraison à domicile est maintenant **désactivée**. Retrait en magasin uniquement.',
     }).catch(() => {});
   }
+
+  const changes = {};
+  if (store_open        !== undefined) changes.store_open        = store_open;
+  if (delivery_enabled  !== undefined) changes.delivery_enabled  = delivery_enabled;
+  logAction(user, 'settings.change', null, null, changes);
 
   res.json({ ok: true });
 });
@@ -407,8 +435,10 @@ app.get('/api/orders/me', async (req, res) => {
 app.delete('/api/orders/:id', async (req, res) => {
   const user = await requireAdmin(req, res);
   if (!user) return;
+  const { data: orderToDelete } = await supabase.from('orders').select('rp_name, username, total, order_type').eq('id', req.params.id).maybeSingle();
   const { error } = await supabase.from('orders').delete().eq('id', req.params.id);
   if (error) return res.status(500).json({ error: 'Erreur suppression commande.' });
+  logAction(user, 'order.delete', orderToDelete?.rp_name || orderToDelete?.username || req.params.id, req.params.id, { total: orderToDelete?.total, order_type: orderToDelete?.order_type });
   res.json({ ok: true });
 });
 
@@ -423,12 +453,13 @@ app.patch('/api/orders/:id/status', async (req, res) => {
   // Récupérer la commande pour gestion des points
   const { data: order } = await supabase
     .from('orders')
-    .select('discord_id, order_type, points_earned, points_cost, status')
+    .select('discord_id, order_type, points_earned, points_cost, status, rp_name, username')
     .eq('id', req.params.id)
     .maybeSingle();
 
   const { error } = await supabase.from('orders').update({ status, updated_at: new Date().toISOString() }).eq('id', req.params.id);
   if (error) return res.status(500).json({ error: 'Erreur mise à jour statut.' });
+  if (order) logAction(user, 'order.status_change', order.rp_name || order.username || req.params.id, req.params.id, { old_status: order.status, new_status: status });
 
   if (order) {
     const completedStatuses = ['delivered', 'picked_up'];
@@ -570,6 +601,8 @@ app.post('/api/physical-sales', async (req, res) => {
     fields: embedFields,
   }).catch(() => {});
 
+  logAction(user, 'sale.create', clientName || 'Client anonyme', data.id, { total, invoiceNumber, client_type: clientType, items: items.map(i => i.name) });
+
   res.json({ ok: true, orderId: data.id, receiptUrl, invoiceNumber });
 });
 
@@ -636,6 +669,7 @@ app.post('/api/products', async (req, res) => {
     .select()
     .single();
   if (error) return res.status(500).json({ error: 'Erreur création produit.' });
+  logAction(user, 'product.add', name, data.id, { price: data.price, strain: data.strain });
   res.json({ product: data });
 });
 
@@ -663,6 +697,8 @@ app.put('/api/products/:id', async (req, res) => {
     .select()
     .single();
   if (error) return res.status(500).json({ error: 'Erreur mise à jour produit.' });
+  const productLogAction = (active === true) ? 'product.enable' : (active === false) ? 'product.disable' : 'product.update';
+  logAction(user, productLogAction, data.name, id, { active: data.active, price: data.price });
   res.json({ product: data });
 });
 
@@ -671,11 +707,13 @@ app.delete('/api/products/:id', async (req, res) => {
   const user = await requireAdmin(req, res);
   if (!user) return;
   const { id } = req.params;
+  const { data: productToDelete } = await supabase.from('products').select('name').eq('id', id).maybeSingle();
   const { error } = await supabase
     .from('products')
     .delete()
     .eq('id', id);
   if (error) return res.status(500).json({ error: 'Erreur suppression produit.' });
+  logAction(user, 'product.delete', productToDelete?.name || id, id, {});
   res.json({ ok: true });
 });
 
@@ -715,6 +753,26 @@ app.post('/api/upload-image', async (req, res) => {
     console.error('ImgBB upload error:', e);
     res.status(500).json({ error: 'Erreur upload image.' });
   }
+});
+
+// ── Logs ──
+app.get('/api/logs', async (req, res) => {
+  const user = await requireAdmin(req, res);
+  if (!user) return;
+  const { search, action, actor, date_from, date_to, limit = '100', offset = '0' } = req.query;
+  let query = supabase
+    .from('logs')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(Number(offset), Number(offset) + Number(limit) - 1);
+  if (action)    query = query.eq('action', action);
+  if (actor)     query = query.ilike('actor_email', `%${actor}%`);
+  if (date_from) query = query.gte('created_at', date_from);
+  if (date_to)   query = query.lte('created_at', date_to + 'T23:59:59Z');
+  if (search)    query = query.or(`target_name.ilike.%${search}%,actor_email.ilike.%${search}%,action.ilike.%${search}%`);
+  const { data, error, count } = await query;
+  if (error) return res.status(500).json({ error: 'Erreur récupération logs.' });
+  res.json({ logs: data, total: count });
 });
 
 // ── 404 ──
